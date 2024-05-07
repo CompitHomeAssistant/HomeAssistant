@@ -18,7 +18,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     coordinator.device_definitions.devices
     async_add_devices(
         [
-            CompitSelect(coordinator, device, parameter, device_definition.name)
+            CompitSensor(coordinator, device, parameter, device_definition.name)
 
             for gate in coordinator.gates
             for device in gate.devices
@@ -28,7 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
         ]
     )
 
-class CompitSelect(CoordinatorEntity, SensorEntity):
+class CompitSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator : CompitDataUpdateCoordinator, device: Device, parameter: Parameter, device_name: str):
         super().__init__(coordinator)
         self.coordinator = coordinator
