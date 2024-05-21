@@ -29,11 +29,11 @@ This integration is created by Compit https://compit.pl/ to integrate air condit
 | SPM           | https://compit.pl/produkty/osprzet/87-czujnik-jakosci-powietrza-spm.html?ic=1                                                                                 |
 | L2            | https://compit.pl/produkty/sterowniki-ogrzewania-podlogowego/40-sterownik-ogrzewania-podlogowego-l2.html?ic=1                                                 |
 | COMBO         | https://compit.pl/produkty/osprzet/92-combo.html?ic=1                                                                                                         |
-| EL750         |
+| EL750         | https://compit.pl/produkty/sterowniki-do-kotlow/73-sterownik-kotla-elektrycznego-el750-1.html?ic=1
 | R350.M        | https://compit.pl/produkty/sterowniki-uniwerslane/85-pogodowy-regulator-temperatury-obiegu-grzewczego-z-mieszaczem-r350m.html?ic=1                            |
 | R350 T3       | https://compit.pl/produkty/sterowniki-instalacji/42-dwustopniowy-sterownik-temperatury-regulator-pi-regulator-krokowy-sterowanie-3-punktowe-r350-07.html?ic=1 |
 | R350.CWU      | https://compit.pl/produkty/sterowniki-uniwerslane/78-sterownik-do-podgrzewania-wody-r350-cwu.html?ic=1                                                        |
-| AF-1          |
+| AF-1          | https://compit.pl/produkty/osprzet/91-af-1.html?ic=1
 
 ## Installation
 
