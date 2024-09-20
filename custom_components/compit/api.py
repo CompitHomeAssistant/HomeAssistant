@@ -1,4 +1,3 @@
-import requests
 import logging
 import asyncio
 from typing import Any
@@ -29,9 +28,9 @@ class CompitAPI:
             })
 
             if response.status == 422:
+                result = await self.get_result(response, ignore_response_code=True)
                 self.token = result['token']
                 response = await self._api_wrapper.post(f"{API_URL}/clients", {
-                        "push_notifications": False,
                         "fcm_token": None,
                         "uid": "HomeAssistant",
                         "label": "HomeAssistant"
@@ -55,7 +54,6 @@ class CompitAPI:
         except Exception as e:
             _LOGGER.error(e)
             return False
-
 
     async def get_state(self, device_id: int):
         try:
@@ -88,8 +86,8 @@ class CompitAPI:
             _LOGGER.error(e)
             return False
 
-    async def get_result(self, response: aiohttp.ClientResponse) -> Any:
-        if response.ok:
+    async def get_result(self, response: aiohttp.ClientResponse, ignore_response_code: bool = False) -> Any:
+        if response.ok or ignore_response_code:
             return await response.json()
 
         raise Exception(f"Server returned: {response.status} {response.reason}")
