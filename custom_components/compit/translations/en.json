@@ -1,0 +1,23 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Log in",
+                "data": {
+                    "email": "Email",
+                    "password": "Password"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Cannot connect to the service",
+            "invalid_auth": "Invalid username or password"
+        },
+        "success": {
+            "title": "Successfully connected"
+        }
+    },
+    "devices": {
+        "file_name": "devices_pl.json"
+    }
+}
