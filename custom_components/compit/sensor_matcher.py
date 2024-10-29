@@ -13,6 +13,6 @@ class SensorMatcher:
         if paramater.min_value is not None and paramater.max_value is not None:
             return Platform.NUMBER
         if paramater.details is not None:
-            if len(paramater.details) == 2:
-                return Platform.SWITCH
+            # if len(paramater.details) == 2:
+            #     return Platform.SWITCH
             return Platform.SELECT
