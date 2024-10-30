@@ -18,7 +18,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         session = async_get_clientsession(hass)
         api = CompitAPI(entry.data["email"], entry.data["password"], session)
         gates = await api.authenticate()
-        device_definitions = await get_device_definitions(hass)
+        device_definitions = await get_device_definitions(hass, hass.config.language)
 
         coordinator = CompitDataUpdateCoordinator(hass, gates.gates, api, device_definitions)
         await coordinator.async_config_entry_first_refresh()
@@ -50,9 +50,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return unload_ok
 
-async def get_device_definitions(hass: HomeAssistant) -> DeviceDefinitions:
-    user_language = hass.config.language
-    file_name = f"devices_{user_language}.json"
+async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefinitions:
+
+    file_name = f"devices_{lang}.json"
 
     try:
         file_path = os.path.join(os.path.dirname(__file__), 'definitions', file_name)
@@ -60,5 +60,5 @@ async def get_device_definitions(hass: HomeAssistant) -> DeviceDefinitions:
         with open(file_path, 'r', encoding='utf-8') as file:
             return DeviceDefinitions.from_json(json.load(file))
     except FileNotFoundError:
-        print(f"Plik {file_path} nie został znaleziony.")
-        return None
+        print(f"File {file_path} not found.")
+        return get_device_definitions(hass, "pl")

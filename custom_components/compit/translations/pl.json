@@ -12,12 +12,6 @@
     "error": {
       "cannot_connect": "Nie można połączyć się z usługą",
       "invalid_auth": "Nieprawidłowa nazwa użytkownika lub hasło"
-    },
-    "success": {
-      "title": "Pomyślnie połączono"
     }
-  },
-  "devices": {
-    "file_name": "devices_pl.json"
   }
 }
