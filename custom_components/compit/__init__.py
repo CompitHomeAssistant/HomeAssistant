@@ -12,8 +12,6 @@ from .const import DOMAIN, PLATFORMS
 from .api import CompitAPI
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Ustawienie integracji na podstawie wpisu konfiguracyjnego."""
-    # Utworzenie instancji API
     try:
         session = async_get_clientsession(hass)
         api = CompitAPI(entry.data["email"], entry.data["password"], session)
@@ -23,7 +21,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator = CompitDataUpdateCoordinator(hass, gates.gates, api, device_definitions)
         await coordinator.async_config_entry_first_refresh()
 
-        # Przechowywanie instancji API w danych hass, aby inne platformy mogły z niej korzystać
         hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
         for platform in PLATFORMS:
@@ -36,15 +33,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Obsługa usunięcia wpisu konfiguracyjnego."""
-    # Usunięcie wszystkich załadowanych platform
     unload_ok = all(
         await asyncio.gather(
             *[hass.config_entries.async_forward_entry_unload(entry, platform) for platform in PLATFORMS]
         )
     )
 
-    # Usunięcie danych API, jeśli wszystko zostało pomyślnie usunięte
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
@@ -61,4 +55,4 @@ async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefini
             return DeviceDefinitions.from_json(json.load(file))
     except FileNotFoundError:
         print(f"File {file_path} not found.")
-        return get_device_definitions(hass, "pl")
+        return get_device_definitions(hass, "en")
