@@ -1,4 +1,3 @@
-
 import logging
 from homeassistant.const import Platform
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -10,10 +9,10 @@ from .types.DeviceState import DeviceInstance, DeviceState
 from .types.SystemInfo import Device, Gate
 from .coordinator import CompitDataUpdateCoordinator
 
-from .const import (
-    DOMAIN
-)
+from .const import DOMAIN
+
 _LOGGER: logging.Logger = logging.getLogger(__package__)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
@@ -21,17 +20,37 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     async_add_devices(
         [
             CompitSwitch(coordinator, device, parameter, device_definition.name)
-
             for gate in coordinator.gates
             for device in gate.devices
-            if (device_definition := next((definition for definition in coordinator.device_definitions.devices if definition.code == device.type), None)) is not None
+            if (
+                device_definition := next(
+                    (
+                        definition
+                        for definition in coordinator.device_definitions.devices
+                        if definition.code == device.type
+                    ),
+                    None,
+                )
+            )
+            is not None
             for parameter in device_definition.parameters
-            if SensorMatcher.get_platform(parameter, coordinator.data[device.id].state.get_parameter_value(parameter)) == Platform.SWITCH
+            if SensorMatcher.get_platform(
+                parameter,
+                coordinator.data[device.id].state.get_parameter_value(parameter),
+            )
+            == Platform.SWITCH
         ]
     )
 
+
 class CompitSwitch(CoordinatorEntity, SwitchEntity):
-    def __init__(self, coordinator : CompitDataUpdateCoordinator, device: Device, parameter: Parameter, device_name: str):
+    def __init__(
+        self,
+        coordinator: CompitDataUpdateCoordinator,
+        device: Device,
+        parameter: Parameter,
+        device_name: str,
+    ):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.unique_id = f"select_{device.label}{parameter.parameter_code}"
@@ -39,14 +58,21 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
         self.parameter = parameter
         self.device = device
         self.device_name = device_name
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(self.parameter)
+        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+            self.parameter
+        )
         self._value = 0
         if value is not None:
-             parameter = next((detail for detail in self.parameter.details if detail.param == value.value_code), None)
-             if parameter is not None:
+            parameter = next(
+                (
+                    detail
+                    for detail in self.parameter.details
+                    if detail.param == value.value_code
+                ),
+                None,
+            )
+            if parameter is not None:
                 self._value = parameter
-
-
 
     @property
     def device_info(self):
@@ -70,12 +96,14 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
     def extra_state_attributes(self):
         items = []
 
-        items.append({
-            "device": self.device.label,
-            "device_id": self.device.id,
-            "device_class": self.device.class_,
-            "device_type": self.device.type
-        })
+        items.append(
+            {
+                "device": self.device.label,
+                "device_id": self.device.id,
+                "device_class": self.device.class_,
+                "device_type": self.device.type,
+            }
+        )
 
         return {
             "details": items,
@@ -83,7 +111,12 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         try:
-            if await self.coordinator.api.update_device_parameter(self.device.id, self.parameter.parameter_code, 1) != False:
+            if (
+                await self.coordinator.api.update_device_parameter(
+                    self.device.id, self.parameter.parameter_code, 1
+                )
+                != False
+            ):
                 await self.coordinator.async_request_refresh()
             self._value = 1
             self.async_write_ha_state()
@@ -92,7 +125,12 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs):
         try:
-            if await self.coordinator.api.update_device_parameter(self.device.id, self.parameter.parameter_code, 0) != False:
+            if (
+                await self.coordinator.api.update_device_parameter(
+                    self.device.id, self.parameter.parameter_code, 0
+                )
+                != False
+            ):
                 await self.coordinator.async_request_refresh()
             self._value = 0
             self.async_write_ha_state()

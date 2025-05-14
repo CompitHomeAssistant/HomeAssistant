@@ -1,4 +1,5 @@
 """Home Assistant integration."""
+
 import asyncio
 import json
 import logging
@@ -34,12 +35,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return False
 
         _LOGGER.info("Successfully authenticated with Compit API")
-        _LOGGER.debug("Loading device definitions for language: %s", hass.config.language)
+        _LOGGER.debug(
+            "Loading device definitions for language: %s", hass.config.language
+        )
         device_definitions = await get_device_definitions(hass, hass.config.language)
 
         # Set up coordinator
         _LOGGER.debug("Initializing data coordinator")
-        coordinator = CompitDataUpdateCoordinator(hass, authenticated_gates.gates, api, device_definitions)
+        coordinator = CompitDataUpdateCoordinator(
+            hass, authenticated_gates.gates, api, device_definitions
+        )
         await coordinator.async_config_entry_first_refresh()
 
         # Store coordinator in hass.data
@@ -69,9 +74,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         unload_ok = all(
             await asyncio.gather(
-                *[hass.config_entries.async_forward_entry_unload(entry, platform)
-                  for platform in PLATFORMS],
-                return_exceptions=True
+                *[
+                    hass.config_entries.async_forward_entry_unload(entry, platform)
+                    for platform in PLATFORMS
+                ],
+                return_exceptions=True,
             )
         )
 
@@ -94,12 +101,14 @@ async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefini
     _LOGGER.debug("Loading device definitions from %s", file_name)
 
     try:
-        file_path = os.path.join(os.path.dirname(__file__), 'definitions', file_name)
+        file_path = os.path.join(os.path.dirname(__file__), "definitions", file_name)
         _LOGGER.debug("Full file path: %s", file_path)
 
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             definitions = DeviceDefinitions.from_json(json.load(file))
-            _LOGGER.debug("Successfully loaded device definitions for language: %s", lang)
+            _LOGGER.debug(
+                "Successfully loaded device definitions for language: %s", lang
+            )
             return definitions
     except FileNotFoundError:
         _LOGGER.warning("Device definitions file not found: %s", file_path)

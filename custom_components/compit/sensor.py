@@ -1,4 +1,3 @@
-
 from homeassistant.const import Platform
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -8,10 +7,8 @@ from .types.DeviceDefinitions import Parameter
 from .types.SystemInfo import Device
 from .coordinator import CompitDataUpdateCoordinator
 
-from .const import (
-    DOMAIN,
-    MANURFACER_NAME
-)
+from .const import DOMAIN, MANURFACER_NAME
+
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
@@ -19,17 +16,37 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     async_add_devices(
         [
             CompitSensor(coordinator, device, parameter, device_definition.name)
-
             for gate in coordinator.gates
             for device in gate.devices
-            if (device_definition := next((definition for definition in coordinator.device_definitions.devices if definition.code == device.type), None)) is not None
+            if (
+                device_definition := next(
+                    (
+                        definition
+                        for definition in coordinator.device_definitions.devices
+                        if definition.code == device.type
+                    ),
+                    None,
+                )
+            )
+            is not None
             for parameter in device_definition.parameters
-            if SensorMatcher.get_platform(parameter, coordinator.data[device.id].state.get_parameter_value(parameter)) == Platform.SENSOR
+            if SensorMatcher.get_platform(
+                parameter,
+                coordinator.data[device.id].state.get_parameter_value(parameter),
+            )
+            == Platform.SENSOR
         ]
     )
 
+
 class CompitSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator : CompitDataUpdateCoordinator, device: Device, parameter: Parameter, device_name: str):
+    def __init__(
+        self,
+        coordinator: CompitDataUpdateCoordinator,
+        device: Device,
+        parameter: Parameter,
+        device_name: str,
+    ):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.unique_id = f"sensor_{device.label}{parameter.parameter_code}"
@@ -51,10 +68,12 @@ class CompitSensor(CoordinatorEntity, SensorEntity):
     @property
     def name(self):
         return f"{self.label}"
-    
+
     @property
     def state(self):
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(self.parameter)
+        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+            self.parameter
+        )
 
         if value is None:
             return None
