@@ -2,7 +2,7 @@ name: Lint with Pylint
 
 on:
   pull_request:
-    branches: [ main ]  # or your default branch
+    branches: [ master ]  # or your default branch
 
 jobs:
   lint:
