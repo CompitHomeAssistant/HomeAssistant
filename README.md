@@ -53,6 +53,26 @@ HACS (recommended)
 | `Email`    | User email for https://inext.compit.pl |
 | `Password` | Password for the account               |
 
+## Code Style and Linting
+
+This project uses **[Black](https://black.readthedocs.io/en/stable/)** and **[Pylint](https://pylint.pycqa.org/)** to maintain code quality and consistency.
+
+- **Black** is used for automatic code formatting. You can format your codebase by running:
+  ```bash
+  black custom_components/compit
+  ```
+  Black makes code formatting decisions for you; please do not modify the style it enforces.
+
+- **Pylint** is used for static code analysis and to help enforce coding standards. Run Pylint using:
+  ```bash
+  pylint custom_components/compit
+  ```
+  Check and address any issues or suggestions raised by Pylint to keep the code clean and maintainable.
+
+Before opening a pull request, please make sure to run both tools and address any formatting or linting issues.
+
+You can install both tools using pip:
+
 ---
 
 [CompitHomeAssistant]: https://github.com/CompitHomeAssistant/HomeAssistant
