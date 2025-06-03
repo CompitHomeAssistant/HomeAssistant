@@ -13,10 +13,17 @@ from .const import DOMAIN
 SCAN_INTERVAL = timedelta(minutes=1)
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
+
 class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance]]):
     """Class to manage fetching data from the API."""
 
-    def __init__(self, hass: HomeAssistant, gates: List[Gate], api: CompitAPI, device_definitions: DeviceDefinitions) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        gates: List[Gate],
+        api: CompitAPI,
+        device_definitions: DeviceDefinitions,
+    ) -> None:
         """Initialize."""
         self.devices: dict[Any, DeviceInstance] = {}
         self.api = api
@@ -26,16 +33,27 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
 
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
 
-    async def _async_update_data(self) -> dict[Any, DeviceInstance] :
+    async def _async_update_data(self) -> dict[Any, DeviceInstance]:
         """Update data via library."""
         try:
             for gate in self.gates:
                 print(f"Bramka: {gate.label}, Kod: {gate.code}")
                 for device in gate.devices:
                     if device.id not in self.devices:
-                        self.devices[device.id] = DeviceInstance(next(filter(lambda item: item._class == device.class_ and item.code == device.type, self.device_definitions.devices), None))
+                        self.devices[device.id] = DeviceInstance(
+                            next(
+                                filter(
+                                    lambda item: item._class == device.class_
+                                    and item.code == device.type,
+                                    self.device_definitions.devices,
+                                ),
+                                None,
+                            )
+                        )
 
-                    print(f"  Urządzenie: {device.label}, ID: {device.id}, Klasa: {device.class_}, Typ: {device.type}")
+                    print(
+                        f"  Urządzenie: {device.label}, ID: {device.id}, Klasa: {device.class_}, Typ: {device.type}"
+                    )
                     state = await self.api.get_state(device.id)
                     self.devices[device.id].state = state
 

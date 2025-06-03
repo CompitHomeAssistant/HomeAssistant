@@ -5,9 +5,11 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 import voluptuous as vol
 
+
 class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
+
     async def async_step_user(self, user_input=None):
         errors = {}
 
@@ -21,14 +23,18 @@ class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 errors["base"] = "invalid_auth"
 
-        self.data_schema = vol.Schema({
-            vol.Required("email"): str,
-            vol.Required("password"): str,
-        })
+        self.data_schema = vol.Schema(
+            {
+                vol.Required("email"): str,
+                vol.Required("password"): str,
+            }
+        )
 
         return self.async_show_form(
             step_id="user", data_schema=self.data_schema, errors=errors
         )
+
+
 class CompitOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
@@ -40,7 +46,12 @@ class CompitOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Optional("custom_option", default=self.config_entry.options.get("custom_option", "")): str,
-            })
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        "custom_option",
+                        default=self.config_entry.options.get("custom_option", ""),
+                    ): str,
+                }
+            ),
         )

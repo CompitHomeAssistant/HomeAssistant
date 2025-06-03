@@ -3,6 +3,7 @@ from homeassistant.const import Platform
 from .types.DeviceState import Param
 from .types.DeviceDefinitions import Parameter
 
+
 class SensorMatcher:
     @staticmethod
     def get_platform(paramater: Parameter, value: Param) -> Platform | None:

@@ -1,4 +1,3 @@
-
 import logging
 from homeassistant.const import Platform
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -10,11 +9,10 @@ from .types.DeviceState import DeviceInstance, DeviceState
 from .types.SystemInfo import Device, Gate
 from .coordinator import CompitDataUpdateCoordinator
 
-from .const import (
-    DOMAIN,
-    MANURFACER_NAME
-)
+from .const import DOMAIN, MANURFACER_NAME
+
 _LOGGER: logging.Logger = logging.getLogger(__package__)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
@@ -22,18 +20,38 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     async_add_devices(
         [
             CompitSelect(coordinator, device, parameter, device_definition.name)
-
             for gate in coordinator.gates
             for device in gate.devices
-            if (device_definition := next((definition for definition in coordinator.device_definitions.devices if definition.code == device.type), None)) is not None
+            if (
+                device_definition := next(
+                    (
+                        definition
+                        for definition in coordinator.device_definitions.devices
+                        if definition.code == device.type
+                    ),
+                    None,
+                )
+            )
+            is not None
             for parameter in device_definition.parameters
-            if SensorMatcher.get_platform(parameter, coordinator.data[device.id].state.get_parameter_value(parameter)) == Platform.SELECT
+            if SensorMatcher.get_platform(
+                parameter,
+                coordinator.data[device.id].state.get_parameter_value(parameter),
+            )
+            == Platform.SELECT
         ]
     )
 
+
 class CompitSelect(CoordinatorEntity, SelectEntity):
 
-    def __init__(self, coordinator : CompitDataUpdateCoordinator, device: Device, parameter: Parameter, device_name: str):
+    def __init__(
+        self,
+        coordinator: CompitDataUpdateCoordinator,
+        device: Device,
+        parameter: Parameter,
+        device_name: str,
+    ):
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.unique_id = f"select_{device.label}{parameter.parameter_code}"
@@ -41,8 +59,12 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
         self.parameter = parameter
         self.device = device
         self.device_name = device_name
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(self.parameter)
-        self._value = next(detail for detail in self.parameter.details if detail.state == value.value)
+        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+            self.parameter
+        )
+        self._value = next(
+            detail for detail in self.parameter.details if detail.state == value.value
+        )
 
     @property
     def device_info(self):
@@ -53,7 +75,6 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
             "model": self.device_name,
             "sw_version": "1.0",
         }
-
 
     @property
     def name(self):
@@ -68,8 +89,15 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
     def state(self):
 
         if self._value is not None:
-            parameter = next((detail for detail in self.parameter.details if detail.param == self._value.param), None)
-            if (parameter is not None):
+            parameter = next(
+                (
+                    detail
+                    for detail in self.parameter.details
+                    if detail.param == self._value.param
+                ),
+                None,
+            )
+            if parameter is not None:
                 return parameter.description
             else:
                 return self._value.description
@@ -80,22 +108,36 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
     def extra_state_attributes(self):
         items = []
 
-        items.append({
-            "device": self.device.label,
-            "device_id": self.device.id,
-            "device_class": self.device.class_,
-            "device_type": self.device.type
-        })
+        items.append(
+            {
+                "device": self.device.label,
+                "device_id": self.device.id,
+                "device_class": self.device.class_,
+                "device_type": self.device.type,
+            }
+        )
 
         return {
             "details": items,
         }
 
     async def async_select_option(self, option: str) -> None:
-        value = next((detail for detail in self.parameter.details if detail.description == option), None)
+        value = next(
+            (
+                detail
+                for detail in self.parameter.details
+                if detail.description == option
+            ),
+            None,
+        )
         self._value = value
         try:
-            if await self.coordinator.api.update_device_parameter(self.device.id, self.parameter.parameter_code, value.state) != False:                
+            if (
+                await self.coordinator.api.update_device_parameter(
+                    self.device.id, self.parameter.parameter_code, value.state
+                )
+                != False
+            ):
                 self._value = value
                 self.async_write_ha_state()
                 await self.coordinator.async_request_refresh()

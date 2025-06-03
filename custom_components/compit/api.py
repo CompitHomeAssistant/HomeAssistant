@@ -11,6 +11,7 @@ TIMEOUT = 10
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 HEADERS = {"Content-type": "application/json; charset=UTF-8"}
 
+
 class CompitAPI:
     def __init__(self, email, password, session: aiohttp.ClientSession):
         self.email = email
@@ -20,27 +21,34 @@ class CompitAPI:
 
     async def authenticate(self):
         try:
-            response = await self._api_wrapper.post(f"{API_URL}/authorize", {
-                "email": self.email,
-                "password": self.password,
-                "uid": "HomeAssistant",
-                "label": "HomeAssistant"
-            })
+            response = await self._api_wrapper.post(
+                f"{API_URL}/authorize",
+                {
+                    "email": self.email,
+                    "password": self.password,
+                    "uid": "HomeAssistant",
+                    "label": "HomeAssistant",
+                },
+            )
 
             if response.status == 422:
                 result = await self.get_result(response, ignore_response_code=True)
-                self.token = result['token']
-                response = await self._api_wrapper.post(f"{API_URL}/clients", {
+                self.token = result["token"]
+                response = await self._api_wrapper.post(
+                    f"{API_URL}/clients",
+                    {
                         "fcm_token": None,
                         "uid": "HomeAssistant",
-                        "label": "HomeAssistant"
-                }, auth=self.token)
+                        "label": "HomeAssistant",
+                    },
+                    auth=self.token,
+                )
 
                 result = await self.get_result(response)
                 return self.authenticate()
 
             result = await self.get_result(response)
-            self.token = result['token']
+            self.token = result["token"]
             return SystemInfo.from_json(result)
         except Exception as e:
             _LOGGER.error(e)
@@ -57,7 +65,9 @@ class CompitAPI:
 
     async def get_state(self, device_id: int):
         try:
-            response = await self._api_wrapper.get(f"{API_URL}/devices/{device_id}/state", {}, self.token)
+            response = await self._api_wrapper.get(
+                f"{API_URL}/devices/{device_id}/state", {}, self.token
+            )
 
             return DeviceState.from_json(await self.get_result(response))
 
@@ -65,32 +75,32 @@ class CompitAPI:
             _LOGGER.error(e)
             return False
 
-    async def update_device_parameter(self, device_id: int, parameter: str, value: str | int):
+    async def update_device_parameter(
+        self, device_id: int, parameter: str, value: str | int
+    ):
         try:
             print(f"Set {parameter} to {value} for device {device_id}")
             _LOGGER.info(f"Set {parameter} to {value} for device {device_id}")
 
-            data = {
-                "values": [
-                    {
-                        "code": parameter,
-                        "value": value
-                    }
-                ]
-            }
+            data = {"values": [{"code": parameter, "value": value}]}
 
-            response = await self._api_wrapper.put(f"{API_URL}/devices/{device_id}/params", data=data, auth=self.token)
+            response = await self._api_wrapper.put(
+                f"{API_URL}/devices/{device_id}/params", data=data, auth=self.token
+            )
             return await self.get_result(response)
 
         except Exception as e:
             _LOGGER.error(e)
             return False
 
-    async def get_result(self, response: aiohttp.ClientResponse, ignore_response_code: bool = False) -> Any:
+    async def get_result(
+        self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
+    ) -> Any:
         if response.ok or ignore_response_code:
             return await response.json()
 
         raise Exception(f"Server returned: {response.status} {response.reason}")
+
 
 class ApiWrapper:
     """Helper class"""
@@ -98,7 +108,9 @@ class ApiWrapper:
     def __init__(self, session: aiohttp.ClientSession):
         self._session = session
 
-    async def get(self, url: str, headers: dict = {}, auth: Any = None) -> aiohttp.ClientResponse:
+    async def get(
+        self, url: str, headers: dict = {}, auth: Any = None
+    ) -> aiohttp.ClientResponse:
         """Run http GET method"""
         if auth:
             headers["Authorization"] = auth
@@ -123,9 +135,7 @@ class ApiWrapper:
         if auth:
             headers["Authorization"] = auth
 
-        return await self.api_wrapper(
-            "put", url, data=data, headers=headers, auth=None
-        )
+        return await self.api_wrapper("put", url, data=data, headers=headers, auth=None)
 
     async def api_wrapper(
         self,

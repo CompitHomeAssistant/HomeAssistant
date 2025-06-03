@@ -9,5 +9,5 @@ PLATFORMS = [
     Platform.SELECT,
     Platform.NUMBER,
     Platform.SENSOR,
-    Platform.SWITCH
+    Platform.SWITCH,
 ]
