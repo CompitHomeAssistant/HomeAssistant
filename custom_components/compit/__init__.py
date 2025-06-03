@@ -1,5 +1,4 @@
 """Home Assistant integration."""
-
 import asyncio
 import json
 import logging
@@ -35,13 +34,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return False
 
         _LOGGER.info("Successfully authenticated with Compit API")
+
         _LOGGER.debug(
             "Loading device definitions for language: %s", hass.config.language
         )
+
         device_definitions = await get_device_definitions(hass, hass.config.language)
 
         # Set up coordinator
         _LOGGER.debug("Initializing data coordinator")
+
         coordinator = CompitDataUpdateCoordinator(
             hass, authenticated_gates.gates, api, device_definitions
         )
@@ -74,6 +76,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         unload_ok = all(
             await asyncio.gather(
+
                 *[
                     hass.config_entries.async_forward_entry_unload(entry, platform)
                     for platform in PLATFORMS
@@ -109,6 +112,7 @@ async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefini
             _LOGGER.debug(
                 "Successfully loaded device definitions for language: %s", lang
             )
+
             return definitions
     except FileNotFoundError:
         _LOGGER.warning("Device definitions file not found: %s", file_path)
