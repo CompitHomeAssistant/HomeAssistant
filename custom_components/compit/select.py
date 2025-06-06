@@ -5,9 +5,8 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from .sensor_matcher import SensorMatcher
 from .types.DeviceDefinitions import Parameter
-from .types.DeviceState import DeviceInstance, DeviceState
 from .types.SystemInfo import Device, Gate
-from .coordinator import CompitDataUpdateCoordinator
+from .coordinator import CompitDataUpdateCoordinatorPush
 
 from .const import DOMAIN, MANURFACER_NAME
 
@@ -15,11 +14,11 @@ _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: CompitDataUpdateCoordinatorPush = hass.data[DOMAIN][entry.entry_id]
     coordinator.device_definitions.devices
     async_add_devices(
         [
-            CompitSelect(coordinator, device, parameter, device_definition.name)
+            CompitSelect(coordinator, gate, device, parameter, device_definition.name)
             for gate in coordinator.gates
             for device in gate.devices
             if (
@@ -36,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
             for parameter in device_definition.parameters
             if SensorMatcher.get_platform(
                 parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
+                coordinator.devices[device.id].state.get_parameter_value(parameter),
             )
             == Platform.SELECT
         ]
@@ -47,7 +46,8 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
 
     def __init__(
         self,
-        coordinator: CompitDataUpdateCoordinator,
+        coordinator: CompitDataUpdateCoordinatorPush,
+        gate: Gate,
         device: Device,
         parameter: Parameter,
         device_name: str,
@@ -57,9 +57,10 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
         self.unique_id = f"select_{device.label}{parameter.parameter_code}"
         self.label = f"{device.label} {parameter.label}"
         self.parameter = parameter
+        self.gate = gate
         self.device = device
         self.device_name = device_name
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+        value = self.coordinator.devices[self.device.id].state.get_parameter_value(
             self.parameter
         )
         self._value = next(
@@ -134,7 +135,10 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
         try:
             if (
                 await self.coordinator.api.update_device_parameter(
-                    self.device.id, self.parameter.parameter_code, value.state
+                    self.gate.id,
+                    self.device.id,
+                    self.parameter.parameter_code,
+                    value.state,
                 )
                 != False
             ):
@@ -142,4 +146,4 @@ class CompitSelect(CoordinatorEntity, SelectEntity):
                 self.async_write_ha_state()
                 await self.coordinator.async_request_refresh()
         except Exception as e:
-            _LOGGER.error(e)
+            _LOGGER.error(e, exc_info=True)

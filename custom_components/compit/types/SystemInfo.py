@@ -2,11 +2,12 @@ from typing import List
 
 
 class Device:
-    def __init__(self, class_: int, id: int, label: str, type: int):
+    def __init__(self, class_: int, id: int, label: str, type: int, version: int):
         self.class_ = class_
         self.id = id
         self.label = label
         self.type = type
+        self.version = version
 
 
 class Gate:
@@ -28,7 +29,7 @@ class SystemInfo:
                 code=g["code"],
                 devices=[
                     Device(
-                        class_=d["class"], id=d["id"], label=d["label"], type=d["type"]
+                        class_=d["class"], id=d["id"], label=d["label"], type=d["type"], version=d.get("version", 1)
                     )
                     for d in g["devices"]
                 ],

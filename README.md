@@ -8,6 +8,8 @@
 
 This integration is created by Compit https://compit.pl/ to integrate air conditioning, ventilation and heating controllers with HomeAssistant. This integration needs Compit iNext account setup https://inext.compit.pl.
 
+***This fork is rewrited to use regula iNext API with websocket (push messages) and access to more parameters.***
+
 **This component supports the following Compit devices.**
 
 | Device        | Description                                                                                                                                                   |

@@ -5,13 +5,13 @@ from homeassistant.core import HomeAssistant
 from .sensor_matcher import SensorMatcher
 from .types.DeviceDefinitions import Parameter
 from .types.SystemInfo import Device
-from .coordinator import CompitDataUpdateCoordinator
+from .coordinator import CompitDataUpdateCoordinatorPush
 
 from .const import DOMAIN, MANURFACER_NAME
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: CompitDataUpdateCoordinatorPush = hass.data[DOMAIN][entry.entry_id]
     coordinator.device_definitions.devices
     async_add_devices(
         [
@@ -32,7 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
             for parameter in device_definition.parameters
             if SensorMatcher.get_platform(
                 parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
+                coordinator.devices[device.id].state.get_parameter_value(parameter),
             )
             == Platform.SENSOR
         ]
@@ -42,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
 class CompitSensor(CoordinatorEntity, SensorEntity):
     def __init__(
         self,
-        coordinator: CompitDataUpdateCoordinator,
+        coordinator: CompitDataUpdateCoordinatorPush,
         device: Device,
         parameter: Parameter,
         device_name: str,
@@ -71,7 +71,7 @@ class CompitSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def state(self):
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+        value = self.coordinator.devices[self.device.id].state.get_parameter_value(
             self.parameter
         )
 

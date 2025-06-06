@@ -1,4 +1,5 @@
 from typing import List, Optional, Any
+from datetime import datetime
 
 from .DeviceDefinitions import Device, Parameter
 
@@ -58,9 +59,36 @@ class DeviceState:
         ]
         return cls(
             errors=data["errors"],
-            last_connected_at=data["last_connected_at"],
+            last_connected_at=data.get("last_connected_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
             params=params,
         )
+
+    def update_from_json(self, data: dict):
+        params = [
+            Param(
+                code=p["code"],
+                hidden=p["hidden"],
+                max=p.get("max"),
+                min=p.get("min"),
+                value=p["value"],
+                value_code=p.get("value_code"),
+                value_label=p.get("value_label"),
+                write=p["write"],
+                ext_info=p.get("ext_info"),
+            )
+            for p in data["params"]
+        ]
+        for param in params:
+            self_param = next(filter(lambda item: item.code == param.code, self.params), None)
+            if self_param:
+                self_param.value = param.value
+                self_param.value_code = param.value_code
+                self_param.value_label = param.value_label
+                self_param.ext_info = param.ext_info
+                self_param.write = param.write
+                self_param.max = param.max
+                self_param.min = param.min
+                self_param.hidden = param.hidden
 
 
 class DeviceInstance:

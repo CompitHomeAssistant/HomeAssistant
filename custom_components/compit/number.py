@@ -7,9 +7,8 @@ from homeassistant.core import HomeAssistant
 from .sensor_matcher import SensorMatcher
 
 from .types.DeviceDefinitions import Parameter
-from .types.DeviceState import DeviceInstance, DeviceState
 from .types.SystemInfo import Device, Gate
-from .coordinator import CompitDataUpdateCoordinator
+from .coordinator import CompitDataUpdateCoordinatorPush
 
 from .const import DOMAIN, MANURFACER_NAME
 
@@ -18,11 +17,11 @@ _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
 
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: CompitDataUpdateCoordinatorPush = hass.data[DOMAIN][entry.entry_id]
     coordinator.device_definitions.devices
     async_add_devices(
         [
-            CompitNumber(coordinator, device, parameter, device_definition.name)
+            CompitNumber(coordinator, gate, device, parameter, device_definition.name)
             for gate in coordinator.gates
             for device in gate.devices
             if (
@@ -39,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
             for parameter in device_definition.parameters
             if SensorMatcher.get_platform(
                 parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
+                coordinator.devices[device.id].state.get_parameter_value(parameter),
             )
             == Platform.NUMBER
         ]
@@ -50,7 +49,8 @@ class CompitNumber(CoordinatorEntity, NumberEntity):
 
     def __init__(
         self,
-        coordinator: CompitDataUpdateCoordinator,
+        coordinator: CompitDataUpdateCoordinatorPush,
+        gate: Gate,
         device: Device,
         parameter: Parameter,
         device_name: str,
@@ -60,11 +60,12 @@ class CompitNumber(CoordinatorEntity, NumberEntity):
         self.unique_id = f"number_{device.label}{parameter.parameter_code}"
         self.label = f"{device.label} {parameter.label}"
         self.parameter = parameter
+        self.gate = gate
         self.device = device
         self._attr_unit_of_measurement = parameter.unit
         self.device_name = device_name
         self._value = (
-            self.coordinator.data[self.device.id]
+            self.coordinator.devices[self.device.id]
             .state.get_parameter_value(self.parameter)
             .value
         )
@@ -92,7 +93,7 @@ class CompitNumber(CoordinatorEntity, NumberEntity):
         if isinstance(self.parameter.min_value, (int, float)):
             return self.parameter.min_value
         return (
-            self.coordinator.data[self.device.id]
+            self.coordinator.devices[self.device.id]
             .state.get_parameter_value(self.parameter)
             .min
         )
@@ -102,7 +103,7 @@ class CompitNumber(CoordinatorEntity, NumberEntity):
         if isinstance(self.parameter.max_value, (int, float)):
             return self.parameter.max_value
         return (
-            self.coordinator.data[self.device.id]
+            self.coordinator.devices[self.device.id]
             .state.get_parameter_value(self.parameter)
             .max
         )
@@ -132,7 +133,10 @@ class CompitNumber(CoordinatorEntity, NumberEntity):
         try:
             if (
                 await self.coordinator.api.update_device_parameter(
-                    self.device.id, self.parameter.parameter_code, value
+                    self.gate.id,
+                    self.device.id,
+                    self.parameter.parameter_code,
+                    value,
                 )
                 != False
             ):

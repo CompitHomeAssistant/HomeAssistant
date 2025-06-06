@@ -5,8 +5,8 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.core import HomeAssistant
 
 from .types.DeviceDefinitions import Parameter
-from .types.SystemInfo import Device
-from .coordinator import CompitDataUpdateCoordinator
+from .types.SystemInfo import Device, Gate
+from .coordinator import CompitDataUpdateCoordinatorPush
 from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from .const import DOMAIN, MANURFACER_NAME
@@ -15,12 +15,13 @@ _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: CompitDataUpdateCoordinatorPush = hass.data[DOMAIN][entry.entry_id]
 
     async_add_devices(
         [
             CompitClimate(
                 coordinator,
+                gate,
                 device,
                 device_definition.parameters,
                 device_definition.name,
@@ -47,7 +48,8 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
 
     def __init__(
         self,
-        coordinator: CompitDataUpdateCoordinator,
+        coordinator: CompitDataUpdateCoordinatorPush,
+        gate: Gate,
         device: Device,
         parameters: List[Parameter],
         device_name: str,
@@ -59,6 +61,7 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         self.parameters = {
             parameter.parameter_code: parameter for parameter in parameters
         }
+        self.gate = gate
         self.device = device
         self.available_presets: Parameter = self.parameters.get("__trybpracytermostatu")
         self.available_fan_modes: Parameter = self.parameters.get("__trybaero")
@@ -69,9 +72,9 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         self.set_initial_values()
 
     def set_initial_values(self):
-        preset_mode = self.coordinator.data[self.device.id].state.get_parameter_value(
-            "__trybpracytermostatu"
-        )
+        preset_mode = self.coordinator.devices[
+            self.device.id
+        ].state.get_parameter_value("__trybpracytermostatu")
         if preset_mode is not None:
             self._preset_mode = next(
                 (
@@ -83,7 +86,7 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
             ).state
         else:
             self._preset_mode = None
-        fan_mode = self.coordinator.data[self.device.id].state.get_parameter_value(
+        fan_mode = self.coordinator.devices[self.device.id].state.get_parameter_value(
             "__trybaero"
         )
         if fan_mode is not None:
@@ -98,7 +101,7 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         else:
             self._fan_mode = None
 
-        hvac_mode = self.coordinator.data[self.device.id].state.get_parameter_value(
+        hvac_mode = self.coordinator.devices[self.device.id].state.get_parameter_value(
             "__trybpracyinstalacji"
         )
         if hvac_mode is not None:
@@ -127,7 +130,7 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def current_temperature(self):
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+        value = self.coordinator.devices[self.device.id].state.get_parameter_value(
             "__tpokojowa"
         )
         if value is None:
@@ -136,7 +139,7 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def target_temperature(self):
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(
+        value = self.coordinator.devices[self.device.id].state.get_parameter_value(
             "__tpokzadana"
         )
         if value is None:
@@ -254,7 +257,10 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         try:
             if (
                 await self.coordinator.api.update_device_parameter(
-                    self.device.id, parameter, value
+                    self.gate.id,
+                    self.device.id,
+                    parameter,
+                    value,
                 )
                 != False
             ):
