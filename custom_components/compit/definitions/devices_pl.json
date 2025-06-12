@@ -380,7 +380,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__rt_a4_t6",
@@ -389,7 +389,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__rt_akt_moc_ahu",
@@ -398,7 +398,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "%"
             },
             {
                 "ParameterCode": "__rt_a4_t7",
@@ -407,7 +407,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__numernano",
@@ -2606,7 +2606,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__rt_a4_t6",
@@ -2615,7 +2615,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__rt_akt_moc_ahu",
@@ -2624,7 +2624,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "%"
             },
             {
                 "ParameterCode": "__rt_a4_t7",
@@ -2633,7 +2633,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__numernano",
@@ -4817,7 +4817,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__rt_a4_t6",
@@ -4826,7 +4826,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__rt_akt_moc_ahu",
@@ -4835,7 +4835,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "%"
             },
             {
                 "ParameterCode": "__rt_a4_t7",
@@ -4844,7 +4844,7 @@
                 "Details": null,
                 "MinValue": null,
                 "MaxValue": null,
-                "Unit": null
+                "Unit": "°C"
             },
             {
                 "ParameterCode": "__tempzadkomf",
