@@ -39,7 +39,7 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
         self._websocket_task = None
         self._heartbeat_task = None
         self._heartbeat_no = 8
-        self._vent_group_requested = False
+        self._vent_group_requested: None | datetime = None
         self.vent_group_id = None
 
         super().__init__(hass, _LOGGER, name=DOMAIN)
@@ -132,7 +132,7 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
             update_data = message[4]
 
             if message[3] == "selected_params_update":
-                self._vent_group_requested = False
+                self._vent_group_requested = None
 
             for gate in self.gates:
                 if gate.id != update_data.get("gate_id"):
@@ -186,7 +186,11 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
     async def _request_parameters(self, now):
         if self.websocket:
             try:
-                if not self._vent_group_requested:
+                if (
+                    not self._vent_group_requested
+                    or datetime.now() - self._vent_group_requested
+                    > timedelta(minutes=5)
+                ):
                     _LOGGER.info(
                         f"Requesting parameters for group {self.vent_group_id}..."
                     )
@@ -195,7 +199,7 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
                         self.gates[0].devices[0].id,
                         self.vent_group_id,
                     )
-                    self._vent_group_requested = True
+                    self._vent_group_requested = datetime.now()
             except Exception as e:
                 _LOGGER.error("Error requesting parameters: %s", e)
 
