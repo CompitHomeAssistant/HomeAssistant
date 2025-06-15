@@ -36,6 +36,7 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
         self.device_definitions = device_definitions
         self.hass = hass
         self.websocket = None
+        self._last_message_received = None
         self._websocket_task = None
         self._heartbeat_task = None
         self._heartbeat_no = 8
@@ -104,10 +105,12 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
                 if message.type == aiohttp.WSMsgType.TEXT:
                     _LOGGER.info("Received message: %s", message.data[:16])
                     self._handle_websocket_message(json.loads(message.data))
+                    self._last_message_received = datetime.now()
                 elif message.type == aiohttp.WSMsgType.ERROR:
                     _LOGGER.warning(
                         "Websocket connection closed: %s", self.websocket.exception()
                     )
+                    self._reconnect()
 
             except Exception as e:
                 _LOGGER.error(
@@ -119,9 +122,7 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
             await asyncio.sleep(0.1)
 
         _LOGGER.error("Websocket disconnected. Reconnecting in 5 seconds...")
-        self.stop_websocket()
-        asyncio.sleep(5)
-        self.hass.async_create_task(self._start_websocket())
+        self._reconnect()
 
     @callback
     def _handle_websocket_message(self, message: list):
@@ -180,8 +181,15 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
                 self._heartbeat_no += 1
                 _LOGGER.info("Sending heartbeat packet: %s", heartbeat_packet)
                 await self.websocket.send_str(json.dumps(heartbeat_packet))
+
             except Exception as e:
                 _LOGGER.error("Error sending heartbeat: %s", e)
+                if (
+                    self._last_message_received
+                    and datetime.now() - self._last_message_received
+                    > timedelta(minutes=15)
+                ):
+                    self._reconnect()
 
     async def _request_parameters(self, now):
         if self.websocket:
@@ -200,8 +208,17 @@ class CompitDataUpdateCoordinatorPush(DataUpdateCoordinator[dict[Any, DeviceInst
                         self.vent_group_id,
                     )
                     self._vent_group_requested = datetime.now()
+
+            except ConnectionResetError:
+                self._reconnect()
+
             except Exception as e:
                 _LOGGER.error("Error requesting parameters: %s", e)
+
+    def _reconnect(self):
+        self.stop_websocket()
+        asyncio.sleep(5)
+        self.hass.async_create_task(self._start_websocket())
 
     async def async_config_entry_first_refresh(self):
         """Start the websocket connection when the integration is loaded."""
