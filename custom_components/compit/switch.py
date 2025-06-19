@@ -138,7 +138,7 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
             _LOGGER.error(e)
 
     async def async_toggle(self, **kwargs):
-        if self.is_on():
+        if self.is_on:
             await self.async_turn_off()
         else:
             await self.async_turn_on()
