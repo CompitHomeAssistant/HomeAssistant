@@ -8,5 +8,5 @@
     "documentation": "https://github.com/CompitHomeAssistant/HomeAssistant",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/CompitHomeAssistant/HomeAssistant/issues",
-    "version": "1.0.3"
+    "version": "1.0.4"
   }

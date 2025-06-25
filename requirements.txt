@@ -1,5 +1,5 @@
 colorlog==6.7.0
-homeassistant==2025.5.1
+homeassistant==2025.6.1
 ruff==0.0.292
 black
 pylint

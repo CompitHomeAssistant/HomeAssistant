@@ -251,6 +251,12 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         return UnitOfTemperature.CELSIUS
 
     async def async_call_api(self, parameter: str, value: int) -> None:
+        """Call the Compit API to update a device parameter.
+
+        Args:
+            parameter: The parameter code to update
+            value: The new value to set for the parameter
+        """
         try:
             if (
                 await self.coordinator.api.update_device_parameter(
