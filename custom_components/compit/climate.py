@@ -67,6 +67,10 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         )
         self.device_name = device_name
         self.set_initial_values()
+        self._temperature = None
+        self._preset_mode = None
+        self._fan_mode = None
+        self._hvac_mode = None
 
     def set_initial_values(self):
         preset_mode = self.coordinator.data[self.device.id].state.get_parameter_value(
@@ -209,7 +213,7 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         await self.async_call_api("__tempzadpracareczna", temp)
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
+        """Set a new target hvac mode."""
         value = 0
         if hvac_mode == HVACMode.HEAT:
             value = 0
@@ -251,6 +255,28 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         return UnitOfTemperature.CELSIUS
 
     async def async_call_api(self, parameter: str, value: int) -> None:
+        """
+        Call the API to update a device parameter and refresh the coordinator state.
+        
+        This method sends a parameter update request to the device through the coordinator's API,
+        and if successful, triggers a refresh of the coordinator data and updates the Home Assistant
+        entity state.
+        
+        Args:
+            parameter (str): The parameter code to update on the device (e.g., "__trybpracytermostatu")
+            value (int): The new value to set for the parameter
+            
+        Returns:
+            None
+            
+        Raises:
+            Exception: Any exception from the API call is caught and logged, but not re-raised
+            
+        Note:
+            - The method only proceeds with refresh and state update if the API call doesn't return False
+            - All exceptions are caught and logged using the module logger
+            - The coordinator refresh and state update happen sequentially after a successful API call
+        """
         try:
             if (
                 await self.coordinator.api.update_device_parameter(

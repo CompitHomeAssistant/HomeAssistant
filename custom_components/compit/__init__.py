@@ -119,9 +119,10 @@ async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefini
         if lang != "en":
             _LOGGER.info("Falling back to English device definitions")
             return await get_device_definitions(hass, "en")
-        else:
-            _LOGGER.error("English device definitions file not found")
-            raise
+
+        _LOGGER.error("English device definitions file not found")
+        raise
+
     except json.JSONDecodeError:
         _LOGGER.error("Failed to parse device definitions file: %s", file_path)
         raise
