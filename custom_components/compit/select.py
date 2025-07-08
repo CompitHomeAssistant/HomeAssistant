@@ -5,8 +5,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from .sensor_matcher import SensorMatcher
 from .types.DeviceDefinitions import Parameter
-from .types.DeviceState import DeviceInstance, DeviceState
-from .types.SystemInfo import Device, Gate
+from .types.SystemInfo import Device
 from .coordinator import CompitDataUpdateCoordinator
 
 from .const import DOMAIN, MANURFACER_NAME

@@ -27,4 +27,4 @@ jobs:
     - name: Run pylint
       run: |
         source venv/bin/activate
-        pylint custom_components/compit --fail-under=7.0
+        pylint custom_components/compit --fail-under=8.0
