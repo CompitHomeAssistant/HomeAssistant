@@ -1,13 +1,13 @@
+import voluptuous as vol
 from homeassistant import config_entries
-from .const import DOMAIN
-from .api import CompitAPI
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
-import voluptuous as vol
+
+from .api import CompitAPI
+from .const import DOMAIN
 
 
 class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
-
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
@@ -20,8 +20,7 @@ class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
             if success:
                 return self.async_create_entry(title="Compit", data=user_input)
-            else:
-                errors["base"] = "invalid_auth"
+            errors["base"] = "invalid_auth"
 
         self.data_schema = vol.Schema(
             {

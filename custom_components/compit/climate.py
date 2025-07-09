@@ -1,15 +1,16 @@
 import logging
 from typing import List
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.components.climate import ClimateEntity
-from homeassistant.core import HomeAssistant
 
+from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
+from homeassistant.const import UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN, MANURFACER_NAME
+from .coordinator import CompitDataUpdateCoordinator
 from .types.DeviceDefinitions import Parameter
 from .types.SystemInfo import Device
-from .coordinator import CompitDataUpdateCoordinator
-from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
-from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from .const import DOMAIN, MANURFACER_NAME
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -28,16 +29,16 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
             for gate in coordinator.gates
             for device in gate.devices
             if (
-                device_definition := next(
-                    (
-                        definition
-                        for definition in coordinator.device_definitions.devices
-                        if definition.code == device.type
-                    ),
-                    None,
-                )
-            )
-            is not None
+                   device_definition := next(
+                       (
+                           definition
+                           for definition in coordinator.device_definitions.devices
+                           if definition.code == device.type
+                       ),
+                       None,
+                   )
+               )
+               is not None
             if (device_definition._class == 10)
         ]
     )
@@ -46,11 +47,11 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
 class CompitClimate(CoordinatorEntity, ClimateEntity):
 
     def __init__(
-        self,
-        coordinator: CompitDataUpdateCoordinator,
-        device: Device,
-        parameters: List[Parameter],
-        device_name: str,
+            self,
+            coordinator: CompitDataUpdateCoordinator,
+            device: Device,
+            parameters: List[Parameter],
+            device_name: str,
     ):
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -150,9 +151,9 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
     @property
     def supported_features(self):
         return (
-            ClimateEntityFeature.TARGET_TEMPERATURE
-            | ClimateEntityFeature.FAN_MODE
-            | ClimateEntityFeature.PRESET_MODE
+                ClimateEntityFeature.TARGET_TEMPERATURE
+                | ClimateEntityFeature.FAN_MODE
+                | ClimateEntityFeature.PRESET_MODE
         )
 
     @property
@@ -279,10 +280,10 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         """
         try:
             if (
-                await self.coordinator.api.update_device_parameter(
-                    self.device.id, parameter, value
-                )
-                != False
+                    await self.coordinator.api.update_device_parameter(
+                        self.device.id, parameter, value
+                    )
+                    != False
             ):
                 await self.coordinator.async_request_refresh()
                 self.async_write_ha_state()

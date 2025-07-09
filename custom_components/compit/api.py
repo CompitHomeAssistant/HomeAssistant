@@ -1,11 +1,13 @@
-import logging
 import asyncio
+import logging
 from typing import Any
-from .types.DeviceState import DeviceState
-from .types.SystemInfo import SystemInfo
-from .const import API_URL
+
 import aiohttp
 import async_timeout
+
+from .const import API_URL
+from .types.DeviceState import DeviceState
+from .types.SystemInfo import SystemInfo
 
 TIMEOUT = 10
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -76,7 +78,7 @@ class CompitAPI:
             return False
 
     async def update_device_parameter(
-        self, device_id: int, parameter: str, value: str | int
+            self, device_id: int, parameter: str, value: str | int
     ):
         try:
             print(f"Set {parameter} to {value} for device {device_id}")
@@ -94,7 +96,7 @@ class CompitAPI:
             return False
 
     async def get_result(
-        self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
+            self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
     ) -> Any:
         if response.ok or ignore_response_code:
             return await response.json()
@@ -109,7 +111,7 @@ class ApiWrapper:
         self._session = session
 
     async def get(
-        self, url: str, headers: dict = {}, auth: Any = None
+            self, url: str, headers: dict = {}, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http GET method"""
         if auth:
@@ -118,7 +120,7 @@ class ApiWrapper:
         return await self.api_wrapper("get", url, headers=headers, auth=None)
 
     async def post(
-        self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
+            self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http POST method"""
         if auth:
@@ -129,7 +131,7 @@ class ApiWrapper:
         )
 
     async def put(
-        self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
+            self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http PUT method"""
         if auth:
@@ -138,12 +140,12 @@ class ApiWrapper:
         return await self.api_wrapper("put", url, data=data, headers=headers, auth=None)
 
     async def api_wrapper(
-        self,
-        method: str,
-        url: str,
-        data: dict = {},
-        headers: dict = {},
-        auth: Any = None,
+            self,
+            method: str,
+            url: str,
+            data: dict = {},
+            headers: dict = {},
+            auth: Any = None,
     ) -> Any:
         """Get information from the API."""
         try:

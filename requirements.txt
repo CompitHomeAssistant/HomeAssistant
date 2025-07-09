@@ -3,3 +3,6 @@ homeassistant==2025.5.1
 ruff==0.0.292
 black
 pylint
+aiohttp~=3.11.18
+async-timeout~=5.0.1
+voluptuous~=0.15.2

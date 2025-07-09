@@ -1,14 +1,15 @@
-from typing import Any, List
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.core import Config, HomeAssistant
 import logging
 from datetime import timedelta
+from typing import Any, List
 
-from .types.SystemInfo import Gate
-from .types.DeviceDefinitions import DeviceDefinitions
-from .types.DeviceState import DeviceInstance
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from .api import CompitAPI
 from .const import DOMAIN
+from .types.DeviceDefinitions import DeviceDefinitions
+from .types.DeviceState import DeviceInstance
+from .types.SystemInfo import Gate
 
 SCAN_INTERVAL = timedelta(minutes=1)
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -18,11 +19,11 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
     """Class to manage fetching data from the API."""
 
     def __init__(
-        self,
-        hass: HomeAssistant,
-        gates: List[Gate],
-        api: CompitAPI,
-        device_definitions: DeviceDefinitions,
+            self,
+            hass: HomeAssistant,
+            gates: List[Gate],
+            api: CompitAPI,
+            device_definitions: DeviceDefinitions,
     ) -> None:
         """Initialize."""
         self.devices: dict[Any, DeviceInstance] = {}
@@ -44,7 +45,7 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
                             next(
                                 filter(
                                     lambda item: item._class == device.class_
-                                    and item.code == device.type,
+                                                 and item.code == device.type,
                                     self.device_definitions.devices,
                                 ),
                                 None,
