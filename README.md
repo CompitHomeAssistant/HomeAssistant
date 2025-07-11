@@ -6,12 +6,13 @@
 [![hacs][hacsbadge]][hacs]
 [![Community Forum][forum-shield]][forum]
 
-This integration is created by Compit https://compit.pl/ to integrate air conditioning, ventilation and heating controllers with HomeAssistant. This integration needs Compit iNext account setup https://inext.compit.pl.
+This integration is created by Compit https://compit.pl/ to integrate air conditioning, ventilation and heating
+controllers with HomeAssistant. This integration needs Compit iNext account setup https://inext.compit.pl.
 
 **This component supports the following Compit devices.**
 
 | Device        | Description                                                                                                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Nano Color 2  | https://compit.pl/produkty/termostaty-pokojowe/88-termostat-pokojowy-nano-color-2.html?ic=1                                                                   |
 | Nano Color    |
 | Nano One      | https://compit.pl/produkty/termostaty-pokojowe/24-termostat-pokojowy-nano-one.html?ic=1                                                                       |
@@ -29,11 +30,11 @@ This integration is created by Compit https://compit.pl/ to integrate air condit
 | SPM           | https://compit.pl/produkty/osprzet/87-czujnik-jakosci-powietrza-spm.html?ic=1                                                                                 |
 | L2            | https://compit.pl/produkty/sterowniki-ogrzewania-podlogowego/40-sterownik-ogrzewania-podlogowego-l2.html?ic=1                                                 |
 | COMBO         | https://compit.pl/produkty/osprzet/92-combo.html?ic=1                                                                                                         |
-| EL750         | https://compit.pl/produkty/sterowniki-do-kotlow/73-sterownik-kotla-elektrycznego-el750-1.html?ic=1
+| EL750         | https://compit.pl/produkty/sterowniki-do-kotlow/73-sterownik-kotla-elektrycznego-el750-1.html?ic=1                                                            
 | R350.M        | https://compit.pl/produkty/sterowniki-uniwerslane/85-pogodowy-regulator-temperatury-obiegu-grzewczego-z-mieszaczem-r350m.html?ic=1                            |
 | R350 T3       | https://compit.pl/produkty/sterowniki-instalacji/42-dwustopniowy-sterownik-temperatury-regulator-pi-regulator-krokowy-sterowanie-3-punktowe-r350-07.html?ic=1 |
 | R350.CWU      | https://compit.pl/produkty/sterowniki-uniwerslane/78-sterownik-do-podgrzewania-wody-r350-cwu.html?ic=1                                                        |
-| AF-1          | https://compit.pl/produkty/osprzet/91-af-1.html?ic=1
+| AF-1          | https://compit.pl/produkty/osprzet/91-af-1.html?ic=1                                                                                                          
 
 ## Installation
 
@@ -49,13 +50,16 @@ HACS (recommended)
 ## Configuration is done in the UI
 
 | Parameter  | Description                            |
-| ---------- | -------------------------------------- |
+|------------|----------------------------------------|
 | `Email`    | User email for https://inext.compit.pl |
 | `Password` | Password for the account               |
 
+# Integration development
+
 ## Code Style and Linting
 
-This project uses **[Black](https://black.readthedocs.io/en/stable/)** and **[Pylint](https://pylint.pycqa.org/)** to maintain code quality and consistency.
+This project uses **[Black](https://black.readthedocs.io/en/stable/)** and **[Pylint](https://pylint.pycqa.org/)** to
+maintain code quality and consistency.
 
 - **Black** is used for automatic code formatting. You can format your codebase by running:
   ```bash
@@ -76,14 +80,25 @@ You can install both tools using pip:
 ---
 
 [CompitHomeAssistant]: https://github.com/CompitHomeAssistant/HomeAssistant
+
 [maintainer]: hhttps://github.com/CompitHomeAssistant
+
 [maintainer-shield]: https://img.shields.io/badge/maintainer-%40CompitHomeAssistant-blue.svg?style=for-the-badge
+
 [commits]: https://github.com/CompitHomeAssistant/HomeAssistant/commits/master
+
 [commits-shield]: https://img.shields.io/github/commit-activity/y/CompitHomeAssistant/HomeAssistant.svg?style=for-the-badge
+
 [hacs]: https://github.com/custom-components/hacs
+
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+
 [forum]: https://community.home-assistant.io/
+
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
+
 [releases]: https://github.com/CompitHomeAssistant/HomeAssistant/releases
+
 [releases-shield]: https://img.shields.io/github/release/CompitHomeAssistant/HomeAssistant.svg?style=for-the-badge
+
 [license-shield]: https://img.shields.io/github/license/CompitHomeAssistant/HomeAssistant.svg?style=for-the-badge

@@ -1,16 +1,17 @@
 """Home Assistant integration."""
-import asyncio
+
 import json
 import logging
 import os
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .types.DeviceDefinitions import DeviceDefinitions
-from .coordinator import CompitDataUpdateCoordinator
-from .const import DOMAIN, PLATFORMS
 from .api import CompitAPI
+from .const import DOMAIN, PLATFORMS
+from .coordinator import CompitDataUpdateCoordinator
+from .types.DeviceDefinitions import DeviceDefinitions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,10 +57,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Setting up platforms for Compit integration")
         for platform in PLATFORMS:
             coordinator.platforms.append(platform)
-            _LOGGER.debug("Setting up %s platform", platform)
-            hass.async_create_task(
-                hass.config_entries.async_forward_entry_setup(entry, platform)
-            )
+
+        # Use the correct method for forwarding entry setups
+        _LOGGER.debug("Setting up platforms: %s", PLATFORMS)
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
         _LOGGER.info("Compit integration successfully set up")
         return True
@@ -74,16 +75,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("Unloading Compit integration for entry: %s", entry.entry_id)
 
     try:
-        unload_ok = all(
-            await asyncio.gather(
-
-                *[
-                    hass.config_entries.async_forward_entry_unload(entry, platform)
-                    for platform in PLATFORMS
-                ],
-                return_exceptions=True,
-            )
-        )
+        # Use the correct method for unloading entry setups
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
         if unload_ok:
             _LOGGER.debug("Successfully unloaded all platforms")

@@ -19,11 +19,11 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
     """Class to manage fetching data from the API."""
 
     def __init__(
-            self,
-            hass: HomeAssistant,
-            gates: List[Gate],
-            api: CompitAPI,
-            device_definitions: DeviceDefinitions,
+        self,
+        hass: HomeAssistant,
+        gates: List[Gate],
+        api: CompitAPI,
+        device_definitions: DeviceDefinitions,
     ) -> None:
         """Initialize."""
         self.devices: dict[Any, DeviceInstance] = {}
@@ -45,7 +45,7 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
                             next(
                                 filter(
                                     lambda item: item._class == device.class_
-                                                 and item.code == device.type,
+                                    and item.code == device.type,
                                     self.device_definitions.devices,
                                 ),
                                 None,
