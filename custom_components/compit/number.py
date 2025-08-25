@@ -1,25 +1,35 @@
 import logging
-from homeassistant.const import Platform
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from homeassistant.components.number import NumberEntity
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-
-from .sensor_matcher import SensorMatcher
-
-from .types.DeviceDefinitions import Parameter
-from .types.DeviceState import DeviceInstance, DeviceState
-from .types.SystemInfo import Device, Gate
-from .coordinator import CompitDataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANURFACER_NAME
+from .coordinator import CompitDataUpdateCoordinator
+from .sensor_matcher import SensorMatcher
+from .types.DeviceDefinitions import Parameter
+from .types.SystemInfo import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
+    """
+    Set up number entities for the Compit integration from a configuration entry.
 
+    This function is responsible for initializing and adding number entities to
+    Home Assistant based on the provided configuration entry and the data retrieved
+    from the `CompitDataUpdateCoordinator`. It dynamically determines which devices
+    and parameters should be represented as number entities by matching their platform.
+    Only valid devices and parameters that match `Platform.NUMBER` are added.
+
+    Args:
+        hass (HomeAssistant): The Home Assistant instance.
+        entry: Configuration entry for the integration.
+        async_add_devices: A callback function to add device entities to Home Assistant.
+    """
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    coordinator.device_definitions.devices
     async_add_devices(
         [
             CompitNumber(coordinator, device, parameter, device_definition.name)

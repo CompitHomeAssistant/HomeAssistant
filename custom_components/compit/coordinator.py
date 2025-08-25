@@ -30,12 +30,17 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
         self.api = api
         self.gates = gates
         self.device_definitions = device_definitions
+        self.platforms = []  # Initialize platforms list
         # Build an index for fast device definition lookup: key = (class, code/type)
-        self._definitions_by_key: Dict[Tuple[int, int], Device] = self._build_definitions_index(device_definitions)
+        self._definitions_by_key: Dict[Tuple[int, int], Device] = (
+            self._build_definitions_index(device_definitions)
+        )
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
 
     @staticmethod
-    def _build_definitions_index(definitions: DeviceDefinitions) -> Dict[Tuple[int, int], Device]:
+    def _build_definitions_index(
+            definitions: DeviceDefinitions,
+    ) -> Dict[Tuple[int, int], Device]:
         """Create an index for device definitions keyed by (class, code)."""
         index: Dict[Tuple[int, int], Device] = {}
         for d in definitions.devices:
@@ -76,7 +81,7 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
                         device.label,
                         device.id,
                         device.class_,
-                        device.type
+                        device.type,
                     )
                     state = await self.api.get_state(device.id)
                     instance.state = state

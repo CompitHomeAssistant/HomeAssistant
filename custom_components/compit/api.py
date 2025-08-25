@@ -129,6 +129,24 @@ class CompitAPI:
     async def update_device_parameter(
             self, device_id: int, parameter: str, value: str | int
     ):
+        """
+        Updates a device parameter by sending a request to the device API.
+
+        This method allows updating the configuration parameter of a specific device
+        with the given value. It logs the request and processes the response from the
+        API upon completion. If the operation fails, it logs the error and returns
+        False.
+
+        Parameters:
+            device_id (int): The unique identifier of the device.
+            parameter (str): The name of the parameter to be updated.
+            value (str | int): The new value to set for the specified parameter.
+
+        Returns:
+            bool: Returns a boolean indicating the success of the operation. If the
+            operation is successful, it returns the result of the API response, else
+            returns False.
+        """
         try:
             _LOGGER.info("Set %s to %s for device %s", parameter, value, device_id)
             data = {"values": [{"code": parameter, "value": value}]}
@@ -145,6 +163,25 @@ class CompitAPI:
     async def get_result(
             self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
     ) -> Any:
+        """
+        Asynchronously retrieves and processes the JSON response from an aiohttp.ClientResponse
+        object. Allows for optional ignoring of response status codes.
+
+        Parameters:
+        response: aiohttp.ClientResponse
+            The HTTP response object received from the aiohttp request.
+        ignore_response_code: bool, optional
+            A boolean indicating whether to ignore the response status code. Defaults to False.
+
+        Returns:
+        Any
+            The JSON-decoded response content.
+
+        Raises:
+        Exception
+            If the response status code is not successful (non-2xx) and ignore_response_code
+            is False.
+        """
         if response.ok or ignore_response_code:
             return await response.json()
 
@@ -158,18 +195,24 @@ class ApiWrapper:
         self._session = session
 
     async def get(
-            self, url: str, headers: dict = {}, auth: Any = None
+            self, url: str, headers=None, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http GET method"""
+        if headers is None:
+            headers = {}
         if auth:
             headers["Authorization"] = auth
 
         return await self.api_wrapper("get", url, headers=headers, auth=None)
 
     async def post(
-            self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
+            self, url: str, data=None, headers=None, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http POST method"""
+        if headers is None:
+            headers = {}
+        if data is None:
+            data = {}
         if auth:
             headers["Authorization"] = auth
 
@@ -178,9 +221,13 @@ class ApiWrapper:
         )
 
     async def put(
-            self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
+            self, url: str, data=None, headers=None, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http PUT method"""
+        if headers is None:
+            headers = {}
+        if data is None:
+            data = {}
         if auth:
             headers["Authorization"] = auth
 
@@ -208,7 +255,10 @@ class ApiWrapper:
                     return response
                 elif method.lower() == "post":
                     response = await self._session.post(
-                        url, headers=headers, json=data, auth=auth  # Use JSON for consistency
+                        url,
+                        headers=headers,
+                        json=data,
+                        auth=auth,  # Use JSON for consistency
                     )
                     return response
                 elif method.lower() == "put":

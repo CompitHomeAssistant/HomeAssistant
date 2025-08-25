@@ -31,33 +31,33 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
             for gate in coordinator.gates
             for device in gate.devices
             if (
-                   device_definition := next(
-                       (
-                           definition
-                           for definition in coordinator.device_definitions.devices
-                           if definition.code == device.type
-                       ),
-                       None,
-                   )
-               )
-               is not None
+                device_definition := next(
+                    (
+                        definition
+                        for definition in coordinator.device_definitions.devices
+                        if definition.code == device.type
+                    ),
+                    None,
+                )
+            )
+            is not None
             for parameter in device_definition.parameters
             if SensorMatcher.get_platform(
-            parameter,
-            coordinator.data[device.id].state.get_parameter_value(parameter),
-        )
-               == Platform.SENSOR
+                parameter,
+                coordinator.data[device.id].state.get_parameter_value(parameter),
+            )
+            == Platform.SENSOR
         ]
     )
 
 
 class CompitSensor(CoordinatorEntity, SensorEntity):
     def __init__(
-            self,
-            coordinator: CompitDataUpdateCoordinator,
-            device: Device,
-            parameter: Parameter,
-            device_name: str,
+        self,
+        coordinator: CompitDataUpdateCoordinator,
+        device: Device,
+        parameter: Parameter,
+        device_name: str,
     ):
         super().__init__(coordinator)
         self.coordinator = coordinator

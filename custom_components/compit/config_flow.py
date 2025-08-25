@@ -10,6 +10,9 @@ from .const import DOMAIN
 class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
+    def __init__(self):
+        self.data_schema = None
+
     async def async_step_user(self, user_input=None):
         """
         Handles the user step of the configuration flow for setting up the Compit integration.
@@ -58,6 +61,20 @@ class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class CompitOptionsFlowHandler(config_entries.OptionsFlow):
+    """
+    Handles the option flow for the Compit integration.
+
+    This class defines how the user can modify configuration options in the entry
+    through the Home Assistant UI. It provides steps for user interaction and processes
+    the provided input to update the configuration.
+
+    Attributes:
+        config_entry: The configuration entry for the integration.
+
+    Methods:
+        async_step_init: Handles the initial step of the options flow, which allows the
+        user to either provide input to modify options or display a form for input.
+    """
 
     def __init__(self, config_entry):
         self.config_entry = config_entry

@@ -46,16 +46,16 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
             for gate in coordinator.gates
             for device in gate.devices
             if (
-                   device_definition := next(
-                       (
-                           definition
-                           for definition in coordinator.device_definitions.devices
-                           if definition.code == device.type
-                       ),
-                       None,
-                   )
-               )
-               is not None
+                device_definition := next(
+                    (
+                        definition
+                        for definition in coordinator.device_definitions.devices
+                        if definition.code == device.type
+                    ),
+                    None,
+                )
+            )
+            is not None
             if (device_definition._class == 10)
         ]
     )
@@ -64,13 +64,16 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
 class CompitClimate(CoordinatorEntity, ClimateEntity):
 
     def __init__(
-            self,
-            coordinator: CompitDataUpdateCoordinator,
-            device: Device,
-            parameters: List[Parameter],
-            device_name: str,
+        self,
+        coordinator: CompitDataUpdateCoordinator,
+        device: Device,
+        parameters: List[Parameter],
+        device_name: str,
     ):
         super().__init__(coordinator)
+        self._hvac_mode = None
+        self._fan_mode = None
+        self._preset_mode = None
         self.coordinator = coordinator
         self.unique_id = f"{device.label}_climate"
         self.label = f"{device.label} climate"
@@ -88,9 +91,10 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
 
     def set_initial_values(self):
         """
-        Sets the initial values for thermostat mode, fan mode, and HVAC (Heating, Ventilation, and Air Conditioning) mode
-        based on the current parameters provided by the coordinator. It retrieves each relevant parameter and determines
-        the appropriate current mode, such as thermostat preset mode, fan operating mode, and HVAC operation.
+        Sets the initial values for thermostat mode, fan mode, and HVAC (Heating, Ventilation, and Air Conditioning)
+        mode based on the current parameters provided by the coordinator. It retrieves each relevant parameter
+        and determines the appropriate current mode, such as thermostat preset mode, fan operating mode,
+        and HVAC operation.
 
         Raises:
             KeyError: If a required key is missing in the state or its parameters.
@@ -173,9 +177,9 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
     @property
     def supported_features(self):
         return (
-                ClimateEntityFeature.TARGET_TEMPERATURE
-                | ClimateEntityFeature.FAN_MODE
-                | ClimateEntityFeature.PRESET_MODE
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.FAN_MODE
+            | ClimateEntityFeature.PRESET_MODE
         )
 
     @property
@@ -286,10 +290,10 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         """
         try:
             if (
-                    await self.coordinator.api.update_device_parameter(
-                        self.device.id, parameter, value
-                    )
-                    != False
+                await self.coordinator.api.update_device_parameter(
+                    self.device.id, parameter, value
+                )
+                != False
             ):
                 await self.coordinator.async_request_refresh()
                 self.async_write_ha_state()
