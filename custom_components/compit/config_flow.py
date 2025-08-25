@@ -1,16 +1,38 @@
+import voluptuous as vol
 from homeassistant import config_entries
-from .const import DOMAIN
-from .api import CompitAPI
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
-import voluptuous as vol
+
+from .api import CompitAPI
+from .const import DOMAIN
 
 
 class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
-
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
+        """
+        Handles the user step of the configuration flow for setting up the Compit integration.
+
+        This asynchronous method manages the user input form for authentication. It validates
+        the credentials provided by the user by communicating with the Compit API and ensures
+        that the entered data is correct. If the authentication is successful, an entry is
+        created for the integration; otherwise, the appropriate error message is displayed
+        to the user.
+
+        Parameters:
+            user_input: The dictionary containing the user-provided input. Expected fields are
+                'email' and 'password'. If None, the method will return the initial user input
+                form.
+
+        Returns:
+            Returns either the configuration entry created upon successful authentication or
+            a form displaying errors if the authentication fails.
+
+        Raises:
+            KeyError: Raised if user_input lacks required keys ('email' or 'password'),
+                although validation prevents this in practice.
+        """
         errors = {}
 
         if user_input is not None:

@@ -1,11 +1,13 @@
-import logging
 import asyncio
+import logging
 from typing import Any
-from .types.DeviceState import DeviceState
-from .types.SystemInfo import SystemInfo
-from .const import API_URL
+
 import aiohttp
 import async_timeout
+
+from .const import API_URL
+from .types.DeviceState import DeviceState
+from .types.SystemInfo import SystemInfo
 
 TIMEOUT = 10
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -20,6 +22,18 @@ class CompitAPI:
         self._api_wrapper = ApiWrapper(session)
 
     async def authenticate(self):
+        """
+        Handles user authentication asynchronously by interacting with an API endpoint.
+
+        Raises:
+            Exception: Captures and logs any exception encountered during the
+            authentication process.
+
+        Returns:
+            SystemInfo | bool: Returns a SystemInfo object created from the successful
+            response data, or False in case of an error or failure during the
+            authentication process.
+        """
         try:
             response = await self._api_wrapper.post(
                 f"{API_URL}/authorize",
@@ -55,6 +69,22 @@ class CompitAPI:
             return False
 
     async def get_gates(self):
+        """
+        Retrieves the gates information asynchronously.
+
+        This method interacts with an external API to fetch the information about
+        available gates. In case of an error during the fetching process, it logs
+        the exception and returns False.
+
+        Raises:
+            Exception: General exception raised during API communication or data
+            transformation.
+
+        Returns:
+            SystemInfo: A SystemInfo object populated with data fetched from the
+            API if successful.
+            bool: Returns False when an error occurs.
+        """
         try:
             response = await self._api_wrapper.get(f"{API_URL}/gates", {}, self.token)
 
@@ -64,6 +94,27 @@ class CompitAPI:
             return False
 
     async def get_state(self, device_id: int):
+        """
+        Fetches the state of a device using its unique device identifier asynchronously.
+
+        This method interacts with an external API to retrieve the current state of
+        the specified device. It uses an internal API wrapper to perform the HTTP GET
+        request to the desired endpoint and processes the response to return a
+        DeviceState object representing the device's state. In case of an error, it
+        logs the exception and returns False.
+
+        Args:
+            device_id (int): The unique identifier of the device for which the state
+                is to be fetched.
+
+        Returns:
+            DeviceState | bool: A DeviceState object parsed from the API response if
+                successful, otherwise False.
+
+        Raises:
+            Any exception occurring during the API call or response processing will
+            be logged and returned as False without being re-raised.
+        """
         try:
             response = await self._api_wrapper.get(
                 f"{API_URL}/devices/{device_id}/state", {}, self.token
@@ -76,12 +127,10 @@ class CompitAPI:
             return False
 
     async def update_device_parameter(
-        self, device_id: int, parameter: str, value: str | int
+            self, device_id: int, parameter: str, value: str | int
     ):
         try:
-            print(f"Set {parameter} to {value} for device {device_id}")
-            _LOGGER.info(f"Set {parameter} to {value} for device {device_id}")
-
+            _LOGGER.info("Set %s to %s for device %s", parameter, value, device_id)
             data = {"values": [{"code": parameter, "value": value}]}
 
             response = await self._api_wrapper.put(
@@ -94,7 +143,7 @@ class CompitAPI:
             return False
 
     async def get_result(
-        self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
+            self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
     ) -> Any:
         if response.ok or ignore_response_code:
             return await response.json()
@@ -109,7 +158,7 @@ class ApiWrapper:
         self._session = session
 
     async def get(
-        self, url: str, headers: dict = {}, auth: Any = None
+            self, url: str, headers: dict = {}, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http GET method"""
         if auth:
@@ -118,7 +167,7 @@ class ApiWrapper:
         return await self.api_wrapper("get", url, headers=headers, auth=None)
 
     async def post(
-        self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
+            self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http POST method"""
         if auth:
@@ -129,7 +178,7 @@ class ApiWrapper:
         )
 
     async def put(
-        self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
+            self, url: str, data: dict = {}, headers: dict = {}, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http PUT method"""
         if auth:
@@ -138,30 +187,37 @@ class ApiWrapper:
         return await self.api_wrapper("put", url, data=data, headers=headers, auth=None)
 
     async def api_wrapper(
-        self,
-        method: str,
-        url: str,
-        data: dict = {},
-        headers: dict = {},
-        auth: Any = None,
+            self,
+            method: str,
+            url: str,
+            data: dict = None,
+            headers: dict = None,
+            auth: Any = None,
     ) -> Any:
         """Get information from the API."""
+        # Use None as default and create a new dict if needed
+        if data is None:
+            data = {}
+        if headers is None:
+            headers = {}
+
         try:
             async with async_timeout.timeout(TIMEOUT):
-                if method == "get":
+                if method.lower() == "get":
                     response = await self._session.get(url, headers=headers, auth=auth)
                     return response
-
-                elif method == "post":
+                elif method.lower() == "post":
                     response = await self._session.post(
-                        url, headers=headers, data=data, auth=auth
+                        url, headers=headers, json=data, auth=auth  # Use JSON for consistency
                     )
                     return response
-                elif method == "put":
+                elif method.lower() == "put":
                     response = await self._session.put(
                         url, headers=headers, json=data, auth=auth
                     )
                     return response
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {method}")
 
         except asyncio.TimeoutError as exception:
             _LOGGER.error(
@@ -169,3 +225,11 @@ class ApiWrapper:
                 url,
                 exception,
             )
+            raise  # Re-raise the exception instead of returning None
+        except Exception as exception:
+            _LOGGER.error(
+                "Error fetching information from %s - %s",
+                url,
+                exception,
+            )
+            raise  # Re-raise the exception

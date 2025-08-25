@@ -1,55 +1,54 @@
 import logging
-from homeassistant.const import Platform
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from .sensor_matcher import SensorMatcher
-from .types.DeviceDefinitions import Parameter
-from .types.DeviceState import DeviceInstance, DeviceState
-from .types.SystemInfo import Device, Gate
-from .coordinator import CompitDataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import CompitDataUpdateCoordinator
+from .sensor_matcher import SensorMatcher
+from .types.DeviceDefinitions import Parameter
+from .types.SystemInfo import Device
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    coordinator.device_definitions.devices
     async_add_devices(
         [
             CompitSwitch(coordinator, device, parameter, device_definition.name)
             for gate in coordinator.gates
             for device in gate.devices
             if (
-                device_definition := next(
-                    (
-                        definition
-                        for definition in coordinator.device_definitions.devices
-                        if definition.code == device.type
-                    ),
-                    None,
-                )
-            )
-            is not None
+                   device_definition := next(
+                       (
+                           definition
+                           for definition in coordinator.device_definitions.devices
+                           if definition.code == device.type
+                       ),
+                       None,
+                   )
+               )
+               is not None
             for parameter in device_definition.parameters
             if SensorMatcher.get_platform(
-                parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
-            )
-            == Platform.SWITCH
+            parameter,
+            coordinator.data[device.id].state.get_parameter_value(parameter),
+        )
+               == Platform.SWITCH
         ]
     )
 
 
 class CompitSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(
-        self,
-        coordinator: CompitDataUpdateCoordinator,
-        device: Device,
-        parameter: Parameter,
-        device_name: str,
+            self,
+            coordinator: CompitDataUpdateCoordinator,
+            device: Device,
+            parameter: Parameter,
+            device_name: str,
     ):
         super().__init__(coordinator)
         self.coordinator = coordinator
@@ -112,10 +111,10 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs):
         try:
             if (
-                await self.coordinator.api.update_device_parameter(
-                    self.device.id, self.parameter.parameter_code, 1
-                )
-                != False
+                    await self.coordinator.api.update_device_parameter(
+                        self.device.id, self.parameter.parameter_code, 1
+                    )
+                    != False
             ):
                 await self.coordinator.async_request_refresh()
             self._value = 1
@@ -126,10 +125,10 @@ class CompitSwitch(CoordinatorEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs):
         try:
             if (
-                await self.coordinator.api.update_device_parameter(
-                    self.device.id, self.parameter.parameter_code, 0
-                )
-                != False
+                    await self.coordinator.api.update_device_parameter(
+                        self.device.id, self.parameter.parameter_code, 0
+                    )
+                    != False
             ):
                 await self.coordinator.async_request_refresh()
             self._value = 0
