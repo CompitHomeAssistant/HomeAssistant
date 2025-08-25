@@ -87,6 +87,15 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         self.set_initial_values()
 
     def set_initial_values(self):
+        """
+        Sets the initial values for thermostat mode, fan mode, and HVAC (Heating, Ventilation, and Air Conditioning) mode
+        based on the current parameters provided by the coordinator. It retrieves each relevant parameter and determines
+        the appropriate current mode, such as thermostat preset mode, fan operating mode, and HVAC operation.
+
+        Raises:
+            KeyError: If a required key is missing in the state or its parameters.
+
+        """
         preset_mode = self.coordinator.data[self.device.id].state.get_parameter_value(
             "__trybpracytermostatu"
         )

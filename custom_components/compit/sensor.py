@@ -25,7 +25,6 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
         async_add_devices: Function to add discovered devices asynchronously.
     """
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    coordinator.device_definitions.devices
     async_add_devices(
         [
             CompitSensor(coordinator, device, parameter, device_definition.name)
