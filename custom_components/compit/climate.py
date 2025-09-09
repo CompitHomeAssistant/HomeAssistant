@@ -1,20 +1,38 @@
 import logging
 from typing import List
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.components.climate import ClimateEntity
-from homeassistant.core import HomeAssistant
 
+from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
+from homeassistant.const import UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN, MANURFACER_NAME
+from .coordinator import CompitDataUpdateCoordinator
 from .types.DeviceDefinitions import Parameter
 from .types.SystemInfo import Device
-from .coordinator import CompitDataUpdateCoordinator
-from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode
-from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from .const import DOMAIN, MANURFACER_NAME
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
+    """
+    Sets up the asynchronous platform entry for CompitClimate devices.
+
+    This function initializes and adds CompitClimate devices to the platform by iterating
+    over the devices provided by the coordinator. It filters and maps the necessary device
+    data and definitions required for the platform.
+
+    Parameters:
+        hass (HomeAssistant): The HomeAssistant instance.
+        entry: The configuration entry to set up.
+        async_add_devices (Callable[[List[CompitClimate]], Awaitable[None]]): Asynchronous
+            function to add the CompitClimate devices.
+
+    Raises:
+        Exception: Raised if any internal error occurs during the setup.
+
+    """
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     async_add_devices(
@@ -53,6 +71,9 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         device_name: str,
     ):
         super().__init__(coordinator)
+        self._hvac_mode = None
+        self._fan_mode = None
+        self._preset_mode = None
         self.coordinator = coordinator
         self.unique_id = f"{device.label}_climate"
         self.label = f"{device.label} climate"
@@ -69,6 +90,16 @@ class CompitClimate(CoordinatorEntity, ClimateEntity):
         self.set_initial_values()
 
     def set_initial_values(self):
+        """
+        Sets the initial values for thermostat mode, fan mode, and HVAC (Heating, Ventilation, and Air Conditioning)
+        mode based on the current parameters provided by the coordinator. It retrieves each relevant parameter
+        and determines the appropriate current mode, such as thermostat preset mode, fan operating mode,
+        and HVAC operation.
+
+        Raises:
+            KeyError: If a required key is missing in the state or its parameters.
+
+        """
         preset_mode = self.coordinator.data[self.device.id].state.get_parameter_value(
             "__trybpracytermostatu"
         )

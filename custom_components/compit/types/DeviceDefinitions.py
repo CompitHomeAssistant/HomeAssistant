@@ -10,14 +10,14 @@ class ParameterDetails:
 
 class Parameter:
     def __init__(
-        self,
-        ParameterCode: str,
-        Label: str,
-        ReadWrite: str = "R",
-        Details: Optional[List[ParameterDetails]] = None,
-        MinValue: Optional[float] = None,
-        MaxValue: Optional[float] = None,
-        Unit: Optional[str] = None,
+            self,
+            ParameterCode: str,
+            Label: str,
+            ReadWrite: str = "R",
+            Details: Optional[List[ParameterDetails]] = None,
+            MinValue: Optional[float] = None,
+            MaxValue: Optional[float] = None,
+            Unit: Optional[str] = None,
     ):
         self.parameter_code = ParameterCode
         self.label = Label
@@ -34,12 +34,12 @@ class Parameter:
 
 class Device:
     def __init__(
-        self,
-        name: str,
-        parameters: List[Parameter],
-        code: int,
-        _class: int,
-        id: Optional[int],
+            self,
+            name: str,
+            parameters: List[Parameter],
+            code: int,
+            _class: int,
+            id: Optional[int],
     ):
         self.name = name
         self.parameters = parameters

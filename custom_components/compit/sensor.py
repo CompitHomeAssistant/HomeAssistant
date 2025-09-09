@@ -1,18 +1,30 @@
-from homeassistant.const import Platform
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN, MANURFACER_NAME
+from .coordinator import CompitDataUpdateCoordinator
 from .sensor_matcher import SensorMatcher
 from .types.DeviceDefinitions import Parameter
 from .types.SystemInfo import Device
-from .coordinator import CompitDataUpdateCoordinator
-
-from .const import DOMAIN, MANURFACER_NAME
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
+    """
+    Sets up a sensor platform for a given configuration entry.
+
+    This function initializes and adds sensor devices based on the configuration
+    entry and the corresponding device data. It retrieves device definitions,
+    matches devices and their parameters to the sensor platform, and dynamically
+    creates sensors.
+
+    Args:
+        hass (HomeAssistant): The Home Assistant instance.
+        entry: The configuration entry providing details for setup.
+        async_add_devices: Function to add discovered devices asynchronously.
+    """
     coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    coordinator.device_definitions.devices
     async_add_devices(
         [
             CompitSensor(coordinator, device, parameter, device_definition.name)
