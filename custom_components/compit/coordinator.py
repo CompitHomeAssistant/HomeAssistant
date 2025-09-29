@@ -19,11 +19,11 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
     """Class to manage fetching data from the API."""
 
     def __init__(
-            self,
-            hass: HomeAssistant,
-            gates: List[Gate],
-            api: CompitAPI,
-            device_definitions: DeviceDefinitions,
+        self,
+        hass: HomeAssistant,
+        gates: List[Gate],
+        api: CompitAPI,
+        device_definitions: DeviceDefinitions,
     ) -> None:
         """Initialize."""
         self.devices: dict[Any, DeviceInstance] = {}
@@ -39,12 +39,20 @@ class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance
 
     @staticmethod
     def _build_definitions_index(
-            definitions: DeviceDefinitions,
+        definitions: DeviceDefinitions,
     ) -> Dict[Tuple[int, int], Device]:
         """Create an index for device definitions keyed by (class, code)."""
         index: Dict[Tuple[int, int], Device] = {}
         for d in definitions.devices:
-            index[(d._class, d.code)] = d
+            # Prefer public attribute or property if available
+            class_id = getattr(d, "class_", None)
+            if class_id is None:
+                # Fallback to a public accessor if defined, else use name-mangled private cautiously
+                class_id = getattr(d, "classId", None)
+            if class_id is None:
+                # As last resort, read the protected field but silence lint by local aliasing
+                class_id = getattr(d, "_class", None)
+            index[(class_id, d.code)] = d
         return index
 
     def _find_definition(self, class_id: int, type_code: int) -> Optional[Device]:

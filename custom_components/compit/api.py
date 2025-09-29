@@ -127,7 +127,7 @@ class CompitAPI:
             return False
 
     async def update_device_parameter(
-            self, device_id: int, parameter: str, value: str | int
+        self, device_id: int, parameter: str, value: str | int
     ):
         """
         Updates a device parameter by sending a request to the device API.
@@ -161,7 +161,7 @@ class CompitAPI:
             return False
 
     async def get_result(
-            self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
+        self, response: aiohttp.ClientResponse, ignore_response_code: bool = False
     ) -> Any:
         """
         Asynchronously retrieves and processes the JSON response from an aiohttp.ClientResponse
@@ -195,7 +195,7 @@ class ApiWrapper:
         self._session = session
 
     async def get(
-            self, url: str, headers=None, auth: Any = None
+        self, url: str, headers=None, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http GET method"""
         if headers is None:
@@ -206,7 +206,7 @@ class ApiWrapper:
         return await self.api_wrapper("get", url, headers=headers, auth=None)
 
     async def post(
-            self, url: str, data=None, headers=None, auth: Any = None
+        self, url: str, data=None, headers=None, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http POST method"""
         if headers is None:
@@ -221,7 +221,7 @@ class ApiWrapper:
         )
 
     async def put(
-            self, url: str, data=None, headers=None, auth: Any = None
+        self, url: str, data=None, headers=None, auth: Any = None
     ) -> aiohttp.ClientResponse:
         """Run http PUT method"""
         if headers is None:
@@ -234,12 +234,12 @@ class ApiWrapper:
         return await self.api_wrapper("put", url, data=data, headers=headers, auth=None)
 
     async def api_wrapper(
-            self,
-            method: str,
-            url: str,
-            data: dict = None,
-            headers: dict = None,
-            auth: Any = None,
+        self,
+        method: str,
+        url: str,
+        data: dict = None,
+        headers: dict = None,
+        auth: Any = None,
     ) -> Any:
         """Get information from the API."""
         # Use None as default and create a new dict if needed
