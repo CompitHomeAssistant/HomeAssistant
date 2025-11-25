@@ -4,14 +4,15 @@ import asyncio
 import json
 import logging
 import os
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .types.DeviceDefinitions import DeviceDefinitions
-from .coordinator import CompitDataUpdateCoordinator
-from .const import DOMAIN, PLATFORMS
 from .api import CompitAPI
+from .const import DOMAIN, PLATFORMS
+from .coordinator import CompitDataUpdateCoordinator
+from .types.DeviceDefinitions import DeviceDefinitions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,18 +100,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefinitions:
     """Load device definitions from JSON file based on language."""
     file_name = f"devices_{lang}.json"
+    file_path = os.path.join(os.path.dirname(__file__), "definitions", file_name)
     _LOGGER.debug("Loading device definitions from %s", file_name)
+    _LOGGER.debug("Full file path: %s", file_path)
 
     try:
-        file_path = os.path.join(os.path.dirname(__file__), "definitions", file_name)
-        _LOGGER.debug("Full file path: %s", file_path)
-
         with open(file_path, "r", encoding="utf-8") as file:
             definitions = DeviceDefinitions.from_json(json.load(file))
             _LOGGER.debug(
                 "Successfully loaded device definitions for language: %s", lang
             )
-
             return definitions
     except FileNotFoundError:
         _LOGGER.warning("Device definitions file not found: %s", file_path)
