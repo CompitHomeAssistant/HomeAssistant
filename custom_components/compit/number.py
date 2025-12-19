@@ -1,153 +1,121 @@
-import logging
+"""Number platform for Compit integration."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from homeassistant.components.number import NumberEntity
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANURFACER_NAME
-from .coordinator import CompitDataUpdateCoordinator
-from .sensor_matcher import SensorMatcher
-from .types.DeviceDefinitions import Parameter
-from .types.SystemInfo import Device
+from .const import DOMAIN, MANUFACTURER_NAME
+from .coordinator import CompitConfigEntry, CompitDataUpdateCoordinator
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+if TYPE_CHECKING:
+    from compit_inext_api import Parameter
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+NUMERIC_PARAM_TYPE = "Numeric"
+PARALLEL_UPDATES = 0
 
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
-    """
-    Set up number entities for the Compit integration from a configuration entry.
+async def async_setup_entry(
+    _hass: HomeAssistant,
+    entry: CompitConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up Compit number entities from a config entry."""
 
-    This function is responsible for initializing and adding number entities to
-    Home Assistant based on the provided configuration entry and the data retrieved
-    from the `CompitDataUpdateCoordinator`. It dynamically determines which devices
-    and parameters should be represented as number entities by matching their platform.
-    Only valid devices and parameters that match `Platform.NUMBER` are added.
+    coordinator = entry.runtime_data
+    number_entities: list[CompitNumber] = []
 
-    Args:
-        hass (HomeAssistant): The Home Assistant instance.
-        entry: Configuration entry for the integration.
-        async_add_devices: A callback function to add device entities to Home Assistant.
-    """
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_devices(
-        [
-            CompitNumber(coordinator, device, parameter, device_definition.name)
-            for gate in coordinator.gates
-            for device in gate.devices
-            if (
-                device_definition := next(
-                    (
-                        definition
-                        for definition in coordinator.device_definitions.devices
-                        if definition.code == device.type
-                    ),
-                    None,
-                )
+    for device_id in coordinator.connector.all_devices:
+        device = coordinator.connector.get_device(device_id)
+        if device is None:
+            continue
+
+        for parameter in device.definition.parameters or []:
+            if parameter is None or parameter.type != NUMERIC_PARAM_TYPE:
+                continue
+
+            device_param = next(
+                (p for p in device.state.params if p.code == parameter.parameter_code),
+                None,
             )
-            is not None
-            for parameter in device_definition.parameters
-            if SensorMatcher.get_platform(
-                parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
+            if device_param is None or device_param.hidden:
+                continue
+
+            if getattr(parameter, "ReadOnly", False):
+                # Read-only numeric values are exposed as sensors.
+                continue
+
+            number_entities.append(
+                CompitNumber(
+                    coordinator,
+                    device_id,
+                    device.definition.name,
+                    parameter,
+                ),
             )
-            == Platform.NUMBER
-        ]
-    )
+
+    async_add_entities(number_entities)
 
 
-class CompitNumber(CoordinatorEntity, NumberEntity):
+class CompitNumber(CoordinatorEntity[CompitDataUpdateCoordinator], NumberEntity):
+    """Representation of a Compit numeric parameter."""
 
     def __init__(
         self,
         coordinator: CompitDataUpdateCoordinator,
-        device: Device,
-        parameter: Parameter,
+        device_id: int,
         device_name: str,
-    ):
+        parameter: Parameter,
+    ) -> None:
+        """Initialize the number entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.unique_id = f"number_{device.label}{parameter.parameter_code}"
-        self.label = f"{device.label} {parameter.label}"
+        self.device_id = device_id
         self.parameter = parameter
-        self.device = device
-        self._attr_unit_of_measurement = parameter.unit
-        self.device_name = device_name
-        self._value = (
-            self.coordinator.data[self.device.id]
-            .state.get_parameter_value(self.parameter)
-            .value
+
+        self._attr_name = parameter.label
+        self._attr_unique_id = f"{device_id}_{parameter.parameter_code}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, str(device_id))},
+            name=device_name,
+            manufacturer=MANUFACTURER_NAME,
+            model=device_name,
         )
 
-    @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.device.id)},
-            "name": self.device.label,
-            "manufacturer": MANURFACER_NAME,
-            "model": self.device_name,
-            "sw_version": "1.0",
-        }
+        self._attr_native_min_value = parameter.min_value or 0.0
+        self._attr_native_max_value = parameter.max_value or 100.0
+        self._attr_native_unit_of_measurement = parameter.unit
 
     @property
-    def name(self):
-        return f"{self.label}"
-
-    @property
-    def native_value(self):
-        return self._value
-
-    @property
-    def native_min_value(self):
-        if isinstance(self.parameter.min_value, (int, float)):
-            return self.parameter.min_value
+    def available(self) -> bool:
+        """Return if entity is available."""
         return (
-            self.coordinator.data[self.device.id]
-            .state.get_parameter_value(self.parameter)
-            .min
+            super().available
+            and self.coordinator.connector.get_device(self.device_id) is not None
         )
 
     @property
-    def native_max_value(self):
-        if isinstance(self.parameter.max_value, (int, float)):
-            return self.parameter.max_value
-        return (
-            self.coordinator.data[self.device.id]
-            .state.get_parameter_value(self.parameter)
-            .max
+    def native_value(self) -> float | None:
+        """Return the current value."""
+        param = self.coordinator.connector.get_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
         )
-
-    @property
-    def native_unit_of_measurement(self):
-        return self._attr_unit_of_measurement
-
-    @property
-    def extra_state_attributes(self):
-        items = []
-
-        items.append(
-            {
-                "device": self.device.label,
-                "device_id": self.device.id,
-                "device_class": self.device.class_,
-                "device_type": self.device.type,
-            }
-        )
-
-        return {
-            "details": items,
-        }
-
-    async def async_set_native_value(self, value: int) -> None:
+        if param is None or param.value is None:
+            return None
         try:
-            if (
-                await self.coordinator.api.update_device_parameter(
-                    self.device.id, self.parameter.parameter_code, value
-                )
-                != False
-            ):
-                self._value = value
-                self.async_write_ha_state()
-                await self.coordinator.async_request_refresh()
-        except Exception as e:
-            _LOGGER.error(e)
+            return float(param.value)
+        except (TypeError, ValueError):
+            return None
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set new value."""
+        await self.coordinator.connector.set_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+            value,
+        )

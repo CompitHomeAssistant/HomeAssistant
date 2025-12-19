@@ -1,0 +1,62 @@
+[tool.black]
+line-length = 88
+target-version = ['py312']
+extend-exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git", "testing_config"]
+asyncio_mode = "auto"
+
+[tool.pylint.MAIN]
+py-version = "3.12"
+ignore = ["tests"]
+load-plugins = ["pylint.extensions.code_style", "pylint.extensions.typing"]
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "format",
+    "abstract-method",
+    "cyclic-import",
+    "duplicate-code",
+    "inconsistent-return-statements",
+    "locally-disabled",
+    "not-context-manager",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+    "too-many-branches",
+    "unused-argument",
+    "wrong-import-order",
+]
+
+[tool.pylint.REPORTS]
+score = false
+
+[tool.pylint.FORMAT]
+expected-line-ending-format = "LF"
+
+[tool.pylint.TYPING]
+runtime-typing = false
+
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"

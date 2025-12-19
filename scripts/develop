@@ -4,10 +4,20 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+HASS_BIN="hass"
+if [[ -x "${PWD}/.venv/bin/hass" ]]; then
+    HASS_BIN="${PWD}/.venv/bin/hass"
+fi
+
+PYTHON_BIN="python3"
+if [[ -x "${PWD}/.venv/bin/python" ]]; then
+    PYTHON_BIN="${PWD}/.venv/bin/python"
+fi
+
 # Create config dir if not present
 if [[ ! -d "${PWD}/config" ]]; then
     mkdir -p "${PWD}/config"
-    hass --config "${PWD}/config" --script ensure_config
+    "${HASS_BIN}" --config "${PWD}/config" --script ensure_config
 fi
 
 # Set the path to custom_components
@@ -17,4 +27,10 @@ fi
 export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"
 
 # Start Home Assistant
-hass --config "${PWD}/config" --debug
+if [[ "${HASS_DEBUGPY:-0}" == "1" ]]; then
+    PORT="${HASS_DEBUGPY_PORT:-5678}"
+    "${PYTHON_BIN}" -m debugpy --listen "0.0.0.0:${PORT}" --wait-for-client \
+        -m homeassistant --config "${PWD}/config" --debug
+else
+    "${HASS_BIN}" --config "${PWD}/config" --debug
+fi

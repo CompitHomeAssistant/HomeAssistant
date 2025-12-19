@@ -1,5 +1,8 @@
-colorlog==6.7.0
-homeassistant==2025.6.1
-ruff==0.0.292
+colorlog
+homeassistant==2025.12.3
+pycares==4.11.0
+ruff
 black
 pylint
+debugpy
+compit-inext-api==0.3.4

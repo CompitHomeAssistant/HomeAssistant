@@ -1,96 +1,117 @@
-import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+"""Config flow for Compit integration."""
 
-from .api import CompitAPI
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+import voluptuous as vol
+from compit_inext_api import CannotConnect, CompitApiConnector, InvalidAuth
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigFlow, ConfigFlowResult
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
 from .const import DOMAIN
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
-class CompitConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+_LOGGER = logging.getLogger(__name__)
+
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_EMAIL): str,
+        vol.Required(CONF_PASSWORD): str,
+    },
+)
+
+STEP_REAUTH_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_PASSWORD): str,
+    },
+)
+
+
+class CompitConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Compit."""
+
     VERSION = 1
 
-    def __init__(self):
-        self.data_schema = None
-
-    async def async_step_user(self, user_input=None):
-        """
-        Handles the user step of the configuration flow for setting up the Compit integration.
-
-        This asynchronous method manages the user input form for authentication. It validates
-        the credentials provided by the user by communicating with the Compit API and ensures
-        that the entered data is correct. If the authentication is successful, an entry is
-        created for the integration; otherwise, the appropriate error message is displayed
-        to the user.
-
-        Parameters:
-            user_input: The dictionary containing the user-provided input. Expected fields are
-                'email' and 'password'. If None, the method will return the initial user input
-                form.
-
-        Returns:
-            Returns either the configuration entry created upon successful authentication or
-            a form displaying errors if the authentication fails.
-
-        Raises:
-            KeyError: Raised if user_input lacks required keys ('email' or 'password'),
-                although validation prevents this in practice.
-        """
-        errors = {}
-
+    async def async_step_user(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Handle the initial step."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            session = async_create_clientsession(self.hass)
-            api = CompitAPI(user_input["email"], user_input["password"], session)
-            success = await api.authenticate()
-
-            if success:
-                return self.async_create_entry(title="Compit", data=user_input)
-            else:
+            session = async_get_clientsession(self.hass)
+            api = CompitApiConnector(session)
+            success = False
+            try:
+                success = await api.init(
+                    user_input[CONF_EMAIL],
+                    user_input[CONF_PASSWORD],
+                    self.hass.config.language,
+                )
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
                 errors["base"] = "invalid_auth"
+            except Exception:
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                if not success:
+                    # Api returned unexpected result but no exception
+                    _LOGGER.error("Compit api returned unexpected result")
+                    errors["base"] = "unknown"
+                else:
+                    await self.async_set_unique_id(user_input[CONF_EMAIL].lower())
 
-        self.data_schema = vol.Schema(
-            {
-                vol.Required("email"): str,
-                vol.Required("password"): str,
-            }
-        )
-
-        return self.async_show_form(
-            step_id="user", data_schema=self.data_schema, errors=errors
-        )
-
-
-class CompitOptionsFlowHandler(config_entries.OptionsFlow):
-    """
-    Handles the option flow for the Compit integration.
-
-    This class defines how the user can modify configuration options in the entry
-    through the Home Assistant UI. It provides steps for user interaction and processes
-    the provided input to update the configuration.
-
-    Attributes:
-        config_entry: The configuration entry for the integration.
-
-    Methods:
-        async_step_init: Handles the initial step of the options flow, which allows the
-        user to either provide input to modify options or display a form for input.
-    """
-
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
-
-    async def async_step_init(self, user_input=None) -> FlowResult:
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+                    if self.source == SOURCE_REAUTH:
+                        self._abort_if_unique_id_mismatch()
+                        return self.async_update_reload_and_abort(
+                            self._get_reauth_entry(),
+                            data_updates=user_input,
+                        )
+                    self._abort_if_unique_id_configured()
+                    return self.async_create_entry(
+                        title=user_input[CONF_EMAIL],
+                        data=user_input,
+                    )
 
         return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
+            step_id="user",
+            data_schema=STEP_USER_DATA_SCHEMA,
+            errors=errors,
+            description_placeholders={"compit_url": "https://inext.compit.pl/"},
+        )
+
+    async def async_step_reauth(self, _data: Mapping[str, Any]) -> ConfigFlowResult:
+        """Handle re-auth."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Confirm re-authentication."""
+        errors: dict[str, str] = {}
+        reauth_entry = self._get_reauth_entry()
+        reauth_entry_data = reauth_entry.data
+
+        if user_input:
+            # Reuse async_step_user with combined credentials
+            return await self.async_step_user(
                 {
-                    vol.Optional(
-                        "custom_option",
-                        default=self.config_entry.options.get("custom_option", ""),
-                    ): str,
-                }
-            ),
+                    CONF_EMAIL: reauth_entry_data[CONF_EMAIL],
+                    CONF_PASSWORD: user_input[CONF_PASSWORD],
+                },
+            )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=STEP_REAUTH_SCHEMA,
+            description_placeholders={CONF_EMAIL: reauth_entry_data[CONF_EMAIL]},
+            errors=errors,
         )

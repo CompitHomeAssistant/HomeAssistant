@@ -1,100 +1,128 @@
+"""Sensor platform for Compit integration."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANURFACER_NAME
-from .coordinator import CompitDataUpdateCoordinator
-from .sensor_matcher import SensorMatcher
-from .types.DeviceDefinitions import Parameter
-from .types.SystemInfo import Device
+from .const import DOMAIN, MANUFACTURER_NAME
+from .coordinator import CompitConfigEntry, CompitDataUpdateCoordinator
+
+if TYPE_CHECKING:
+    from compit_inext_api import Parameter
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+SENSOR_PARAM_TYPE = "Sensor"
+PARALLEL_UPDATES = 0
 
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
-    """
-    Sets up a sensor platform for a given configuration entry.
+async def async_setup_entry(
+    _hass: HomeAssistant,
+    entry: CompitConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up Compit sensor entities from a config entry."""
 
-    This function initializes and adds sensor devices based on the configuration
-    entry and the corresponding device data. It retrieves device definitions,
-    matches devices and their parameters to the sensor platform, and dynamically
-    creates sensors.
+    coordinator = entry.runtime_data
+    sensor_entities: list[CompitSensor] = []
 
-    Args:
-        hass (HomeAssistant): The Home Assistant instance.
-        entry: The configuration entry providing details for setup.
-        async_add_devices: Function to add discovered devices asynchronously.
-    """
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_devices(
-        [
-            CompitSensor(coordinator, device, parameter, device_definition.name)
-            for gate in coordinator.gates
-            for device in gate.devices
-            if (
-                device_definition := next(
-                    (
-                        definition
-                        for definition in coordinator.device_definitions.devices
-                        if definition.code == device.type
-                    ),
-                    None,
-                )
-            )
-            is not None
-            for parameter in device_definition.parameters
-            if SensorMatcher.get_platform(
+    for device_id in coordinator.connector.all_devices:
+        device = coordinator.connector.get_device(device_id)
+        if device is None:
+            continue
+
+        for parameter in device.definition.parameters or []:
+            if parameter is None:
+                continue
+
+            is_sensor = parameter.type == SENSOR_PARAM_TYPE
+            is_readonly = parameter.type == getattr(
                 parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
+                "ReadOnly",
+                False,
             )
-            == Platform.SENSOR
-        ]
-    )
+
+            if not (is_sensor or is_readonly):
+                continue
+
+            device_param = next(
+                (p for p in device.state.params if p.code == parameter.parameter_code),
+                None,
+            )
+            if device_param is None or device_param.hidden:
+                continue
+
+            sensor_entities.append(
+                CompitSensor(
+                    coordinator,
+                    device_id,
+                    device.definition.name,
+                    parameter,
+                ),
+            )
+
+    async_add_entities(sensor_entities)
 
 
-class CompitSensor(CoordinatorEntity, SensorEntity):
+class CompitSensor(CoordinatorEntity[CompitDataUpdateCoordinator], SensorEntity):
+    """Representation of a Compit sensor parameter."""
+
     def __init__(
         self,
         coordinator: CompitDataUpdateCoordinator,
-        device: Device,
-        parameter: Parameter,
+        device_id: int,
         device_name: str,
-    ):
+        parameter: Parameter,
+    ) -> None:
+        """Initialize the sensor entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.unique_id = f"sensor_{device.label}{parameter.parameter_code}"
-        self.label = f"{device.label} {parameter.label}"
+        self.device_id = device_id
         self.parameter = parameter
-        self.device = device
-        self.device_name = device_name
 
-    @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.device.id)},
-            "name": self.device.label,
-            "manufacturer": MANURFACER_NAME,
-            "model": self.device_name,
-            "sw_version": "1.0",
-        }
-
-    @property
-    def name(self):
-        return f"{self.label}"
-
-    @property
-    def state(self):
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(
-            self.parameter
+        self._attr_name = parameter.label
+        self._attr_unique_id = f"{device_id}_{parameter.parameter_code}"
+        self._attr_native_unit_of_measurement = parameter.unit
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, str(device_id))},
+            name=device_name,
+            manufacturer=MANUFACTURER_NAME,
+            model=device_name,
         )
 
-        if value is None:
-            return None
-        if value.value_label is not None:
-            return value.value_label
-        if len(str(value.value)) > 100:
-            return str(value.value)[:100] + "..."
-        return value.value
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            super().available
+            and self.coordinator.connector.get_device(self.device_id) is not None
+        )
 
     @property
-    def unit_of_measurement(self):
-        return self.parameter.unit
+    def native_value(self) -> str | int | float | bool | None:
+        """Return the current value."""
+        param = self.coordinator.connector.get_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+        )
+
+        if param is None or len(str(param.value)) > 20:
+            return None  # Too long or invalid value, put in extra attributes instead
+
+        return param.value
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        """Return extra state attributes."""
+        param = self.coordinator.connector.get_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+        )
+
+        if param is None or len(str(param.value)) > 1000 or len(str(param.value)) <= 20:
+            return None
+
+        return {"raw": param.value}

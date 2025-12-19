@@ -4,4 +4,28 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-python3 -m pip install --requirement requirements.txt
+echo "Setting up development environment..."
+
+VENV_DIR="${PWD}/.venv"
+
+if [[ ! -d "${VENV_DIR}" ]]; then
+    echo "Creating venv at ${VENV_DIR}..."
+    python3 -m venv "${VENV_DIR}"
+fi
+
+PYTHON="${VENV_DIR}/bin/python"
+
+# Upgrade pip
+"${PYTHON}" -m pip install --upgrade pip
+
+# Install requirements
+echo "Installing requirements..."
+"${PYTHON}" -m pip install --requirement requirements.txt
+
+# Install pre-commit hooks if available
+if command -v pre-commit &> /dev/null; then
+    echo "Installing pre-commit hooks..."
+    pre-commit install
+fi
+
+echo "✓ Setup complete!"

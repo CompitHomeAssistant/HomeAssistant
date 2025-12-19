@@ -1,99 +1,56 @@
+"""Define an object to manage fetching Compit data."""
+
 import logging
 from datetime import timedelta
-from typing import Any, List, Dict, Tuple, Optional
 
+from compit_inext_api import (
+    CannotConnect,
+    CompitApiConnector,
+    DeviceInstance,
+    InvalidAuth,
+)
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import CompitAPI
 from .const import DOMAIN
-from .types.DeviceDefinitions import DeviceDefinitions, Device
-from .types.DeviceState import DeviceInstance
-from .types.SystemInfo import Gate
 
-SCAN_INTERVAL = timedelta(minutes=1)
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+SCAN_INTERVAL = timedelta(seconds=30)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
+type CompitConfigEntry = ConfigEntry[CompitDataUpdateCoordinator]
 
 
-class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[Any, DeviceInstance]]):
+class CompitDataUpdateCoordinator(DataUpdateCoordinator[dict[int, DeviceInstance]]):
     """Class to manage fetching data from the API."""
 
     def __init__(
         self,
         hass: HomeAssistant,
-        gates: List[Gate],
-        api: CompitAPI,
-        device_definitions: DeviceDefinitions,
+        config_entry: ConfigEntry,
+        connector: CompitApiConnector,
     ) -> None:
         """Initialize."""
-        self.devices: dict[Any, DeviceInstance] = {}
-        self.api = api
-        self.gates = gates
-        self.device_definitions = device_definitions
-        self.platforms = []  # Initialize platforms list
-        # Build an index for fast device definition lookup: key = (class, code/type)
-        self._definitions_by_key: Dict[Tuple[int, int], Device] = (
-            self._build_definitions_index(device_definitions)
+        self.connector = connector
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=SCAN_INTERVAL,
+            config_entry=config_entry,
         )
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
 
-    @staticmethod
-    def _build_definitions_index(
-        definitions: DeviceDefinitions,
-    ) -> Dict[Tuple[int, int], Device]:
-        """Create an index for device definitions keyed by (class, code)."""
-        index: Dict[Tuple[int, int], Device] = {}
-        for d in definitions.devices:
-            # Prefer public attribute or property if available
-            class_id = getattr(d, "class_", None)
-            if class_id is None:
-                # Fallback to a public accessor if defined, else use name-mangled private cautiously
-                class_id = getattr(d, "classId", None)
-            if class_id is None:
-                # As last resort, read the protected field but silence lint by local aliasing
-                class_id = getattr(d, "_class", None)
-            index[(class_id, d.code)] = d
-        return index
-
-    def _find_definition(self, class_id: int, type_code: int) -> Optional[Device]:
-        """Find a device definition by class and type/code."""
-        return self._definitions_by_key.get((class_id, type_code))
-
-    def _get_or_create_device_instance(self, device) -> DeviceInstance:
-        """Return an existing DeviceInstance or create one using its definition."""
-        dev_id = device.id
-        instance = self.devices.get(dev_id)
-        if instance is not None:
-            return instance
-
-        definition = self._find_definition(device.class_, device.type)
-        if definition is None:
-            raise UpdateFailed(
-                f"Missing device definition for device id={dev_id}, class={device.class_}, type={device.type}"
-            )
-
-        instance = DeviceInstance(definition)
-        self.devices[dev_id] = instance
-        return instance
-
-    async def _async_update_data(self) -> dict[Any, DeviceInstance]:
+    async def _async_update_data(self) -> dict[int, DeviceInstance]:
         """Update data via library."""
         try:
-            for gate in self.gates:
-                _LOGGER.info("Bramka: %s, Kod: %s", gate.label, gate.code)
-                for device in gate.devices:
-                    instance = self._get_or_create_device_instance(device)
+            await self.connector.update_state(device_id=None)  # Update all devices
+        except InvalidAuth as err:
+            raise ConfigEntryAuthFailed("Invalid authentication") from err
+        except CannotConnect as err:
+            raise UpdateFailed("Failed to connect") from err
+        except Exception as err:
+            raise UpdateFailed("Unexpected error") from err
 
-                    _LOGGER.info(
-                        "  Urządzenie: %s, ID: %s, Klasa: %s, Typ: %s",
-                        device.label,
-                        device.id,
-                        device.class_,
-                        device.type,
-                    )
-                    state = await self.api.get_state(device.id)
-                    instance.state = state
-
-            return self.devices
-        except Exception as exception:
-            raise UpdateFailed(f"Update failed: {exception}") from exception
+        return self.connector.all_devices

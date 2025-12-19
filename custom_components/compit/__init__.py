@@ -1,123 +1,67 @@
-"""Home Assistant integration."""
+"""The Compit integration."""
 
-import asyncio
-import json
-import logging
-import os
+from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from typing import TYPE_CHECKING
+
+from compit_inext_api import CannotConnect, CompitApiConnector, InvalidAuth
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import CompitAPI
-from .const import DOMAIN, PLATFORMS
-from .coordinator import CompitDataUpdateCoordinator
-from .types.DeviceDefinitions import DeviceDefinitions
+from .coordinator import CompitConfigEntry, CompitDataUpdateCoordinator
+from .device import setup_devices
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
+PLATFORMS: tuple[Platform, ...] = (
+    Platform.CLIMATE,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Compit integration from a config entry."""
+async def async_setup_entry(hass: HomeAssistant, entry: CompitConfigEntry) -> bool:
+    """Set up Compit from a config entry."""
+
+    session = async_get_clientsession(hass)
+    connector = CompitApiConnector(session)
     try:
-        _LOGGER.debug("Setting up Compit integration for entry: %s", entry.entry_id)
-        session = async_get_clientsession(hass)
-
-        # Extract and log authentication attempt
-        email = entry.data["email"]
-        _LOGGER.debug("Authenticating with email: %s", email)
-        api = CompitAPI(email, entry.data["password"], session)
-
-        # Log authentication and device definition loading
-        _LOGGER.info("Authenticating with Compit API")
-        authenticated_gates = await api.authenticate()
-        if not authenticated_gates:
-            _LOGGER.error("Authentication failed")
-            return False
-
-        _LOGGER.info("Successfully authenticated with Compit API")
-
-        _LOGGER.debug(
-            "Loading device definitions for language: %s", hass.config.language
+        connected = await connector.init(
+            entry.data[CONF_EMAIL],
+            entry.data[CONF_PASSWORD],
+            hass.config.language,
         )
+    except CannotConnect as e:
+        raise ConfigEntryNotReady(f"Error while connecting to Compit: {e}") from e
+    except InvalidAuth as e:
+        raise ConfigEntryAuthFailed(
+            f"Invalid credentials for {entry.data[CONF_EMAIL]}",
+        ) from e
 
-        device_definitions = await get_device_definitions(hass, hass.config.language)
+    if not connected:
+        raise ConfigEntryAuthFailed("Authentication API error")
 
-        # Set up coordinator
-        _LOGGER.debug("Initializing data coordinator")
+    coordinator = CompitDataUpdateCoordinator(hass, entry, connector)
+    await coordinator.async_config_entry_first_refresh()
+    entry.runtime_data = coordinator
 
-        coordinator = CompitDataUpdateCoordinator(
-            hass, authenticated_gates.gates, api, device_definitions
-        )
-        await coordinator.async_config_entry_first_refresh()
+    setup_devices(hass, entry)
 
-        # Store coordinator in hass.data
-        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-        # Set up platforms
-        _LOGGER.info("Setting up platforms for Compit integration")
-        for platform in PLATFORMS:
-            coordinator.platforms.append(platform)
-            _LOGGER.debug("Setting up %s platform", platform)
-            await hass.config_entries.async_forward_entry_setups(entry, [platform])
-
-        _LOGGER.info("Compit integration successfully set up")
-        return True
-    except Exception as e:
-        _LOGGER.exception("Error during Compit integration setup: %s", e)
-        # Raising the exception will mark the setup as failed
-        raise
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    _LOGGER.info("Unloading Compit integration for entry: %s", entry.entry_id)
-
-    try:
-        unload_ok = all(
-            await asyncio.gather(
-                *[
-                    hass.config_entries.async_forward_entry_unload(entry, platform)
-                    for platform in PLATFORMS
-                ],
-                return_exceptions=True,
-            )
-        )
-
-        if unload_ok:
-            _LOGGER.debug("Successfully unloaded all platforms")
-            hass.data[DOMAIN].pop(entry.entry_id)
-            _LOGGER.info("Compit integration successfully unloaded")
-        else:
-            _LOGGER.warning("Some platforms failed to unload properly")
-
-        return unload_ok
-    except Exception as e:
-        _LOGGER.exception("Error during unloading Compit integration: %s", e)
-        return False
+async def async_unload_entry(hass: HomeAssistant, entry: CompitConfigEntry) -> bool:
+    """Unload an entry for the Compit integration."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def get_device_definitions(hass: HomeAssistant, lang: str) -> DeviceDefinitions:
-    """Load device definitions from JSON file based on language."""
-    file_name = f"devices_{lang}.json"
-    file_path = os.path.join(os.path.dirname(__file__), "definitions", file_name)
-    _LOGGER.debug("Loading device definitions from %s", file_name)
-    _LOGGER.debug("Full file path: %s", file_path)
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            definitions = DeviceDefinitions.from_json(json.load(file))
-            _LOGGER.debug(
-                "Successfully loaded device definitions for language: %s", lang
-            )
-            return definitions
-    except FileNotFoundError:
-        _LOGGER.warning("Device definitions file not found: %s", file_path)
-        if lang != "en":
-            _LOGGER.info("Falling back to English device definitions")
-            return await get_device_definitions(hass, "en")
-        _LOGGER.error("English device definitions file not found")
-        raise
-    except json.JSONDecodeError:
-        _LOGGER.error("Failed to parse device definitions file: %s", file_path)
-        raise
+async def async_reload_entry(hass: HomeAssistant, entry: CompitConfigEntry) -> None:
+    """Handle an options update."""
+    await hass.config_entries.async_reload(entry.entry_id)

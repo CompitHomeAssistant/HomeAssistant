@@ -1,17 +1,35 @@
 {
     "config": {
+        "abort": {
+            "reauth_successful": "Re-authentication was successful"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
         "step": {
+            "reauth_confirm": {
+                "data": {
+                    "password": "Password"
+                },
+                "data_description": {
+                    "password": "The password of your inext.compit.pl account"
+                },
+                "description": "Please update your password for {email}"
+            },
             "user": {
-                "title": "Log in",
                 "data": {
                     "email": "Email",
                     "password": "Password"
-                }
+                },
+                "data_description": {
+                    "email": "The email address of your inext.compit.pl account",
+                    "password": "The password of your inext.compit.pl account"
+                },
+                "description": "Please enter your {compit_url} credentials.",
+                "title": "Connect to Compit iNext"
             }
-        },
-        "error": {
-            "cannot_connect": "Cannot connect to the service",
-            "invalid_auth": "Invalid username or password"
         }
     }
 }

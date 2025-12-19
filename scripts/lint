@@ -4,4 +4,21 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-ruff check . --fix
+BIN_PREFIX=""
+if [[ -d "${PWD}/.venv/bin" ]]; then
+	BIN_PREFIX="${PWD}/.venv/bin/"
+fi
+
+echo "Running Ruff linter..."
+"${BIN_PREFIX}ruff" check custom_components/compit
+
+echo ""
+echo "Running Ruff formatter check..."
+"${BIN_PREFIX}ruff" format --check custom_components/compit
+
+echo ""
+echo "Running Pylint..."
+"${BIN_PREFIX}pylint" custom_components/compit
+
+echo ""
+echo "✓ All linting checks passed!"

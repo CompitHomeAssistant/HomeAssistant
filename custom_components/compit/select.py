@@ -1,162 +1,111 @@
-import logging
+"""Select platform for Compit integration."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANURFACER_NAME
-from .coordinator import CompitDataUpdateCoordinator
-from .sensor_matcher import SensorMatcher
-from .types.DeviceDefinitions import Parameter
-from .types.SystemInfo import Device
+from .const import DOMAIN, MANUFACTURER_NAME
+from .coordinator import CompitConfigEntry, CompitDataUpdateCoordinator
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+if TYPE_CHECKING:
+    from compit_inext_api import Parameter
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+SELECT_PARAM_TYPE = "Select"
+PARALLEL_UPDATES = 0
 
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_devices):
-    """
-    Sets up `CompitSelect` entities based on configuration entry.
+async def async_setup_entry(
+    _hass: HomeAssistant,
+    entry: CompitConfigEntry,
+    async_add_devices: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up Compit select sensors from a config entry."""
 
-    This function initializes and adds the `CompitSelect` devices to the home
-    assistant platform. It processes the coordinator's gates, devices, device
-    definitions, and their parameters to determine which devices should be created
-    as selection entities based on the platform determined by the `SensorMatcher`.
-
-    Parameters:
-    entry
-        The configuration entry used for setting up the component in Home Assistant.
-    hass : HomeAssistant
-        The Home Assistant instance that loads the component.
-    async_add_devices
-        A callable to register new devices/entities with Home Assistant.
-
-    Raises:
-        No specific exceptions are documented for this function.
-    """
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_devices(
-        [
-            CompitSelect(coordinator, device, parameter, device_definition.name)
-            for gate in coordinator.gates
-            for device in gate.devices
-            if (
-                device_definition := next(
-                    (
-                        definition
-                        for definition in coordinator.device_definitions.devices
-                        if definition.code == device.type
-                    ),
-                    None,
-                )
+    coordinator = entry.runtime_data
+    select_entities = []
+    for device_id in coordinator.connector.all_devices:
+        device = coordinator.connector.get_device(device_id)
+        if device:
+            select_entities.extend(
+                [
+                    CompitSelect(
+                        coordinator,
+                        device_id,
+                        device.definition.name,
+                        parameter,
+                    )
+                    for parameter in device.definition.parameters or []
+                    if parameter.type == SELECT_PARAM_TYPE
+                ],
             )
-            is not None
-            for parameter in device_definition.parameters
-            if SensorMatcher.get_platform(
-                parameter,
-                coordinator.data[device.id].state.get_parameter_value(parameter),
-            )
-            == Platform.SELECT
-        ]
-    )
+
+    async_add_devices(select_entities)
 
 
-class CompitSelect(CoordinatorEntity, SelectEntity):
+class CompitSelect(CoordinatorEntity[CompitDataUpdateCoordinator], SelectEntity):
+    """Representation of a Compit select entity."""
 
     def __init__(
         self,
         coordinator: CompitDataUpdateCoordinator,
-        device: Device,
-        parameter: Parameter,
+        device_id: int,
         device_name: str,
-    ):
+        parameter: Parameter,
+    ) -> None:
+        """Initialize the select entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.unique_id = f"select_{device.label}{parameter.parameter_code}"
-        self.label = f"{device.label} {parameter.label}"
-        self.parameter = parameter
-        self.device = device
-        self.device_name = device_name
-        value = self.coordinator.data[self.device.id].state.get_parameter_value(
-            self.parameter
-        )
-        self._value = next(
-            detail for detail in self.parameter.details if detail.state == value.value
-        )
-
-    @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.device.id)},
-            "name": self.device.label,
-            "manufacturer": MANURFACER_NAME,
-            "model": self.device_name,
-            "sw_version": "1.0",
+        self.device_id = device_id
+        self._attr_name = parameter.label
+        self._attr_unique_id = f"{device_id}_{parameter.parameter_code}"
+        self.available_values = {
+            detail.description: detail.state
+            for detail in parameter.details or []
+            if detail is not None
         }
+        self._attr_options = list(self.available_values.keys())
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, str(device_id))},
+            name=device_name,
+            manufacturer=MANUFACTURER_NAME,
+            model=device_name,
+        )
+        self.parameter = parameter
 
     @property
-    def name(self):
-        return f"{self.label}"
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            super().available
+            and self.coordinator.connector.get_device(self.device_id) is not None
+        )
 
     @property
-    def options(self) -> list[str]:
-        params = [detail.description for detail in self.parameter.details]
-        return params
+    def current_option(self) -> str | None:
+        """Return the current option."""
+        param = self.coordinator.connector.get_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+        )
+        if param is None or param.value is None:
+            return None
 
-    @property
-    def state(self):
-
-        if self._value is not None:
-            parameter = next(
-                (
-                    detail
-                    for detail in self.parameter.details
-                    if detail.param == self._value.param
-                ),
-                None,
-            )
-            if parameter is not None:
-                return parameter.description
-            return self._value.description
-
+        for description, state in self.available_values.items():
+            if state == param.value:
+                return description
         return None
 
-    @property
-    def extra_state_attributes(self):
-        items = []
-
-        items.append(
-            {
-                "device": self.device.label,
-                "device_id": self.device.id,
-                "device_class": self.device.class_,
-                "device_type": self.device.type,
-            }
-        )
-
-        return {
-            "details": items,
-        }
-
     async def async_select_option(self, option: str) -> None:
-        value = next(
-            (
-                detail
-                for detail in self.parameter.details
-                if detail.description == option
-            ),
-            None,
+        """Change the selected option."""
+        state_value = self.available_values.get(option, -1)
+
+        await self.coordinator.connector.set_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+            state_value,
         )
-        self._value = value
-        try:
-            if (
-                await self.coordinator.api.update_device_parameter(
-                    self.device.id, self.parameter.parameter_code, value.state
-                )
-                != False
-            ):
-                self._value = value
-                self.async_write_ha_state()
-                await self.coordinator.async_request_refresh()
-        except Exception as e:
-            _LOGGER.error(e)

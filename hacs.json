@@ -1,6 +1,6 @@
 {
     "name": "Compit",
-    "homeassistant": "2025.6.1",
+    "homeassistant": "2024.12.0",
     "country": "PL",
     "render_readme": true
 }

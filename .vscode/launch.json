@@ -3,6 +3,21 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Home Assistant: Launch (debug)",
+      "type": "python",
+      "request": "launch",
+      "module": "homeassistant",
+      "args": [
+        "--config",
+        "${workspaceFolder}/config",
+        "--debug"
+      ],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/custom_components"
+      },
+      "justMyCode": true
+    },
+    {
       // Example of attaching to local debug server
       "name": "Python: Attach Local",
       "type": "python",
@@ -12,9 +27,25 @@
       "pathMappings": [
         {
           "localRoot": "${workspaceFolder}",
-          "remoteRoot": "."
+          "remoteRoot": "${workspaceFolder}"
         }
       ]
+    },
+    {
+      "name": "Home Assistant: Attach (debugpy :5678)",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "${workspaceFolder}"
+        }
+      ],
+      "justMyCode": true
     },
     {
       // Example of attaching to my production server

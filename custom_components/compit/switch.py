@@ -1,198 +1,122 @@
-import logging
+"""Switch (boolean) platform for Compit integration."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
-from .coordinator import CompitDataUpdateCoordinator
-from .types.DeviceDefinitions import Parameter
-from .types.SystemInfo import Device
+from .const import DOMAIN, MANUFACTURER_NAME
+from .coordinator import CompitConfigEntry, CompitDataUpdateCoordinator
 
-_LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from compit_inext_api import Parameter
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+BOOLEAN_PARAM_TYPE = "Boolean"
+PARALLEL_UPDATES = 0
 
 
-class CompitSwitch(CoordinatorEntity, SwitchEntity):
+async def async_setup_entry(
+    _hass: HomeAssistant,
+    entry: CompitConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up Compit switch entities from a config entry."""
+
+    coordinator = entry.runtime_data
+    switch_entities: list[CompitSwitch] = []
+
+    for device_id in coordinator.connector.all_devices:
+        device = coordinator.connector.get_device(device_id)
+        if device is None:
+            continue
+
+        for parameter in device.definition.parameters or []:
+            if parameter is None or parameter.type != BOOLEAN_PARAM_TYPE:
+                continue
+
+            if getattr(parameter, "ReadOnly", False):
+                # Boolean read-only values should be exposed as sensors (if needed).
+                continue
+
+            device_param = next(
+                (p for p in device.state.params if p.code == parameter.parameter_code),
+                None,
+            )
+            if device_param is None or device_param.hidden:
+                continue
+
+            switch_entities.append(
+                CompitSwitch(
+                    coordinator,
+                    device_id,
+                    device.definition.name,
+                    parameter,
+                ),
+            )
+
+    async_add_entities(switch_entities)
+
+
+class CompitSwitch(CoordinatorEntity[CompitDataUpdateCoordinator], SwitchEntity):
+    """Representation of a Compit boolean parameter."""
+
     def __init__(
         self,
         coordinator: CompitDataUpdateCoordinator,
-        device: Device,
-        parameter: Parameter,
+        device_id: int,
         device_name: str,
-    ):
+        parameter: Parameter,
+    ) -> None:
+        """Initialize the switch entity."""
         super().__init__(coordinator)
-        self.coordinator = coordinator
-        self.unique_id = f"switch_{device.label}{parameter.parameter_code}"
-        self.label = f"{device.label} {parameter.label}"
+        self.device_id = device_id
         self.parameter = parameter
-        self.device = device
-        self.device_name = device_name
-        self._is_on: bool = False
 
-        # Initialize from coordinator data safely (state may be bool or DeviceState)
-        data_entry = getattr(self.coordinator, "data", {}).get(self.device.id)
-        state_obj = (
-            getattr(data_entry, "state", None) if data_entry is not None else None
+        self._attr_name = parameter.label
+        self._attr_unique_id = f"{device_id}_{parameter.parameter_code}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, str(device_id))},
+            name=device_name,
+            manufacturer=MANUFACTURER_NAME,
+            model=device_name,
         )
 
-        if isinstance(state_obj, bool):
-            self._is_on = state_obj
-        elif hasattr(state_obj, "get_parameter_value"):
-            try:
-                value = state_obj.get_parameter_value(self.parameter)
-            except Exception:  # defensive: unexpected state shape
-                value = None
-            if value is not None:
-                raw_val = getattr(value, "value", None)
-                if raw_val is not None:
-                    try:
-                        self._is_on = bool(int(raw_val))
-                    except Exception:
-                        self._is_on = bool(raw_val)
-                else:
-                    vcode = getattr(value, "value_code", None)
-                    details = self.parameter.details or []
-                    matched = next(
-                        (d for d in details if getattr(d, "param", None) == vcode), None
-                    )
-                    if matched is not None and hasattr(matched, "state"):
-                        self._is_on = bool(getattr(matched, "state"))
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return (
+            super().available
+            and self.coordinator.connector.get_device(self.device_id) is not None
+        )
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.device.id)},
-            "name": self.device.label,
-            "manufacturer": "Compit",
-            "model": self.device_name,
-            "sw_version": "1.0",
-        }
+    def is_on(self) -> bool | None:
+        """Return if the switch is on."""
+        param = self.coordinator.connector.get_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+        )
+        if param is None or param.value is None:
+            return None
+        return bool(param.value)
 
-    @property
-    def name(self):
-        return f"{self.label}"
+    async def async_turn_on(self) -> None:
+        """Turn the entity on."""
+        await self.coordinator.connector.set_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+            1,
+        )
 
-    @property
-    def is_on(self):
-        # Try to reflect latest coordinator value if available
-        try:
-            data_entry = getattr(self.coordinator, "data", {}).get(self.device.id)
-            state_obj = (
-                getattr(data_entry, "state", None) if data_entry is not None else None
-            )
-            if isinstance(state_obj, bool):
-                return state_obj
-            if hasattr(state_obj, "get_parameter_value"):
-                value = state_obj.get_parameter_value(self.parameter)
-                if value is not None:
-                    raw_val = getattr(value, "value", None)
-                    if raw_val is not None:
-                        try:
-                            return bool(int(raw_val))
-                        except Exception:
-                            return bool(raw_val)
-        except Exception:
-            # fall back to cached flag
-            pass
-        return self._is_on
-
-    @property
-    def extra_state_attributes(self):
-        return {
-            "details": [
-                {
-                    "device": self.device.label,
-                    "device_id": self.device.id,
-                    "device_class": self.device.class_,
-                    "device_type": self.device.type,
-                }
-            ],
-        }
-
-    async def async_turn_on(self, **kwargs):
-        try:
-            ok = await self.coordinator.api.update_device_parameter(
-                self.device.id, self.parameter.parameter_code, 1
-            )
-            if not ok:
-                await self.coordinator.async_request_refresh()
-            self._is_on = True
-            self.async_write_ha_state()
-        except Exception as e:
-            _LOGGER.error(e)
-
-    async def async_turn_off(self, **kwargs):
-        try:
-            ok = await self.coordinator.api.update_device_parameter(
-                self.device.id, self.parameter.parameter_code, 0
-            )
-            if not ok:
-                await self.coordinator.async_request_refresh()
-            self._is_on = False
-            self.async_write_ha_state()
-        except Exception as e:
-            _LOGGER.error(e)
-
-    async def async_toggle(self, **kwargs):
-        if self.is_on:
-            await self.async_turn_off()
-        else:
-            await self.async_turn_on()
-
-
-# ... existing code ...
-
-
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
-    coordinator: CompitDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities = []
-    for gate in coordinator.gates:
-        for device in gate.devices:
-            device_definition = next(
-                (
-                    d
-                    for d in coordinator.device_definitions.devices
-                    if d.code == device.type
-                ),
-                None,
-            )
-            if device_definition is None:
-                continue
-
-            # Safely inspect current state
-            data_entry = getattr(coordinator, "data", {}).get(device.id)
-            state_obj = (
-                getattr(data_entry, "state", None) if data_entry is not None else None
-            )
-
-            for parameter in device_definition.parameters:
-                # Only writable, non-number, non-select -> treat as switch
-                is_writable = getattr(parameter, "readWrite", "R") != "R"
-                is_number_like = (
-                    parameter.min_value is not None and parameter.max_value is not None
-                )
-                is_select_like = parameter.details is not None
-                if not is_writable or is_number_like or is_select_like:
-                    continue
-
-                # If state is a DeviceState, check visibility; if bool or None, skip the check
-                visible = True
-                if hasattr(state_obj, "get_parameter_value"):
-                    try:
-                        v = state_obj.get_parameter_value(parameter)
-                        visible = v is not None and not getattr(v, "hidden", False)
-                    except Exception:
-                        visible = False
-
-                if visible:
-                    entities.append(
-                        CompitSwitch(
-                            coordinator=coordinator,
-                            device=device,
-                            parameter=parameter,
-                            device_name=device_definition.name,
-                        )
-                    )
-
-    if entities:
-        async_add_entities(entities)
+    async def async_turn_off(self) -> None:
+        """Turn the entity off."""
+        await self.coordinator.connector.set_device_parameter(
+            self.device_id,
+            self.parameter.parameter_code,
+            0,
+        )
